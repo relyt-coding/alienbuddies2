@@ -1553,13 +1553,16 @@ function autoUpgradeAt(lvl){if(lvl===0)return{effectMain:'BUY AUTO CLICKER',effe
 function multUpgradeCost(lvl){if(lvl===0)return 300000;let c=300000;for(let i=1;i<=lvl;i++){c=Math.round(c*(80+i*30));if(i>=2)c=Math.round(c*3);}return c;}
 function multUpgradeAt(lvl){const tot=Math.pow(2,lvl+1);const names=['DOUBLE TAP','QUADRUPLE TAP','OCTO TAP'];return{effectMain:names[lvl]||`×${tot} TAP`,effectSub:`×${tot} total score multiplier`,cost:multUpgradeCost(lvl)};}
 function alienCost(n){
-  if(n===0)return 1000;
-  if(n===1)return 1000000;
-  let c=1000000;
-  for(let i=1;i<n;i++){
-    let m=12+i*3;          // flatter base growth
-    if(i>=2)m*=0.6;        // alien 3+: -40%
-    if(i>=19)m*=0.6;       // alien 20+: another -40%
+  if(n===0)return 1000;       // alien 1: 1,000
+  if(n===1)return 100000;     // alien 2: 100,000
+  if(n===2)return 1000000;    // alien 3: 1,000,000
+  if(n===3)return 10000000;   // alien 4: 10,000,000
+  // alien 5+ — existing growth curve starting from 10M
+  let c=10000000;
+  for(let i=3;i<n;i++){
+    let m=12+i*3;
+    if(i>=2)m*=0.6;
+    if(i>=19)m*=0.6;
     c=Math.round(c*m);
   }
   return c;
@@ -3252,7 +3255,9 @@ function buildLevel0Grid(){
   document.getElementById('matchPairsDisplay').textContent='FLIP THE CARD';
   document.getElementById('matchProgressBar').style.width='0%';
   grid.style.gridTemplateColumns='1fr';
-  grid.style.gridTemplateRows='1fr';
+  grid.style.gridTemplateRows='';
+  grid.style.maxWidth='280px';
+  grid.style.margin='0 auto';
   const msg='Visit the bunker every time you buy 4 Alien Buddies to play the matching game. Finding all matches wins you Multipliers!';
   const card=document.createElement('div');
   card.className='match-card';
