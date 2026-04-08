@@ -941,7 +941,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
   <div class="home-logo">
     <div class="home-logo-emoji">👽</div>
     <div class="home-logo-title">ALIEN BUDDIES</div>
-    <div class="home-logo-sub">tap · collect · conquer space</div>
+    <div class="home-logo-sub">Published By Relyt Citrus</div>
   </div>
   <div style="width:100%;max-width:340px;padding:0 .5rem;">
     <div class="home-slots-label">— SELECT SAVE FILE —</div>
@@ -1277,7 +1277,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
       </div>
       <div class="bunker-toggles">
         <button class="bunker-toggle-btn active" id="toggleBouncersBtn">👽 ALIENS</button>
-        <button class="bunker-toggle-btn active" id="toggleNamesBtn">🏷 NAMES</button>
+
       </div>
       <div class="bunker-number-label" id="bunkerNumberLabel">BUNKER #1</div>
       <div class="bunker-grid-wrap"><div class="bunker-grid" id="bunkerGrid"></div></div>
@@ -3608,6 +3608,9 @@ function startGame(slotIndex){
 }
 
 function goToHomeScreen(){
+  // Stop all running intervals
+  if(autoInterval){clearInterval(autoInterval);autoInterval=null;}
+  if(seqTimer){clearInterval(seqTimer);seqTimer=null;seqPlaying=false;}
   // Clear all bouncers from the DOM
   bouncers.forEach(b=>b.el.remove());
   bouncers.length=0;
@@ -3626,7 +3629,6 @@ buildHomeScreen();
 //  BOUNCING ALIENS
 // ══════════════════════════════════════════════
 let showBouncers=true;
-let showBouncerNames=true;
 const bouncers=[];
 const alienLayer=document.getElementById('alienLayer');
 function getAlienColor(idx){return ALIEN_OUTLINE_COLORS[idx%ALIEN_OUTLINE_COLORS.length];}
@@ -3656,7 +3658,7 @@ function spawnBouncer(animate=true){
   const data=alienData[idx]||{name:'',color:col};
   const el=document.createElement('div');el.className='bouncer';
   const emojiSpan=document.createElement('span');emojiSpan.className='bouncer-emoji';emojiSpan.textContent='👽';
-  const nameSpan=document.createElement('span');nameSpan.className='bouncer-name';nameSpan.textContent=data.name||'';nameSpan.style.color=col;nameSpan.style.display=(showBouncerNames&&data.name)?'block':'none';
+  const nameSpan=document.createElement('span');nameSpan.className='bouncer-name';nameSpan.textContent=data.name||'';nameSpan.style.color=col;nameSpan.style.display=data.name?'block':'none';
   el.appendChild(emojiSpan);el.appendChild(nameSpan);
   const filter=`drop-shadow(0 0 4px ${col}) drop-shadow(0 0 1px ${col})`;
   el.style.filter=filter;el._baseFilter=filter;el._col=col;el._nameEl=nameSpan;el._emojiEl=emojiSpan;
@@ -3872,7 +3874,7 @@ function renderBunkerView(){
       } else {
         // Update name visibility
         const nameDiv=cell.querySelector('.alien-cell-name');
-        if(nameDiv)nameDiv.classList.toggle('hidden',!showBouncerNames);
+        // names always visible in bunker grid
       }
     }else{cell.classList.remove('occupied');cell.textContent='';cell.style.borderColor='';cell.style.boxShadow='';cell.onclick=null;}
   }
@@ -3883,7 +3885,7 @@ function renderBunkerView(){
 //  BUNKER TOGGLES + ALIEN NAMING
 // ══════════════════════════════════════════════
 const toggleBouncersBtn=document.getElementById('toggleBouncersBtn');
-const toggleNamesBtn=document.getElementById('toggleNamesBtn');
+
 toggleBouncersBtn&&toggleBouncersBtn.addEventListener('click',()=>{
   showBouncers=!showBouncers;
   toggleBouncersBtn.classList.toggle('active',showBouncers);
@@ -3895,20 +3897,10 @@ function applyBouncerNameVisibility(){
     if(!b._nameEl)return;
     const ad=alienData[b.idx];
     const hasName=!!(ad&&ad.name);
-    b._nameEl.classList.remove('hidden'); // clear any opacity-only hiding
-    b._nameEl.style.display=(showBouncerNames&&hasName)?'block':'none';
+    b._nameEl.classList.remove('hidden');
+    b._nameEl.style.display=hasName?'block':'none';
   });
 }
-toggleNamesBtn&&toggleNamesBtn.addEventListener('click',()=>{
-  showBouncerNames=!showBouncerNames;
-  toggleNamesBtn.classList.toggle('active',showBouncerNames);
-  // Sync settings panel toggle
-  v5Settings.bouncerNames=showBouncerNames;
-  saveV5Settings();
-  const sbToggle=document.getElementById('settingsBouncerNames');
-  if(sbToggle)sbToggle.checked=showBouncerNames;
-  applyBouncerNameVisibility();
-});
 
 // ── Alien Profile Modal ──
 let alienProfileIdx=null; // currently viewed alien global index
@@ -3979,7 +3971,7 @@ function saveAlienName(){
       b._nameEl.textContent=name;
       b._nameEl.style.color=b._col;
       b._nameEl.classList.remove('hidden');
-      b._nameEl.style.display=(showBouncerNames&&!!name)?'block':'none';
+      b._nameEl.style.display=!!name?'block':'none';
       foundBouncer=true;
       break;
     }
@@ -4752,10 +4744,6 @@ document.getElementById('settingsParticles')&&document.getElementById('settingsP
 document.getElementById('settingsBouncerNames')&&document.getElementById('settingsBouncerNames').addEventListener('change',function(){
   v5Settings.bouncerNames = this.checked;
   saveV5Settings();
-  // Sync with showBouncerNames so both toggles stay in agreement
-  showBouncerNames = this.checked;
-  const toggleBtn = document.getElementById('toggleNamesBtn');
-  if(toggleBtn) toggleBtn.classList.toggle('active', showBouncerNames);
   applyBouncerNameVisibility();
 });
 
