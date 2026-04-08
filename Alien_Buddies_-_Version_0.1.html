@@ -1419,7 +1419,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
       <div id="matchScoreDisplay" style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:.08em;color:#ffee44;flex-shrink:0;"></div>
     </div>
     <!-- Card grid -->
-    <div id="matchGrid" style="position:relative;z-index:2;display:grid;gap:6px;padding:.5rem 1.2rem;width:100%;max-width:520px;box-sizing:border-box;flex:1;overflow-y:auto;align-content:start;-webkit-overflow-scrolling:touch;"></div>
+    <div id="matchGrid" style="position:relative;z-index:2;display:grid;gap:6px;padding:.5rem 1.2rem;width:100%;max-width:520px;box-sizing:border-box;overflow-y:auto;align-content:start;-webkit-overflow-scrolling:touch;"></div>
     <!-- Victory overlay -->
     <div id="matchVictory" style="position:absolute;inset:0;z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,5,16,.92);backdrop-filter:blur(6px);">
       <div style="font-size:3rem;margin-bottom:.5rem;">🏆</div>
@@ -1448,10 +1448,10 @@ body.desktop-mode .store-zoom-hint{display:none;}
     <!-- Tip reader overlay inside same modal -->
     <div id="tipReader" style="position:absolute;inset:0;z-index:10;display:none;align-items:center;justify-content:center;padding:1.5rem;background:rgba(0,0,0,.92);backdrop-filter:blur(6px);border-radius:20px 20px 0 0;">
       <div style="background:#0f0f04;border:1px solid #3a3a1a;border-radius:16px;padding:1.8rem 1.6rem;max-width:360px;width:100%;display:flex;flex-direction:column;gap:1rem;align-items:center;text-align:center;">
-        <div id="tipReaderNum" style="font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:.2em;color:#666;">TIP 1</div>
+        <div id="tipReaderNum" style="font-family:'Bebas Neue',sans-serif;font-size:1.26rem;letter-spacing:.2em;color:#666;">TIP 1</div>
         <div style="width:40px;height:2px;background:#3a3a1a;border-radius:1px;"></div>
-        <div id="tipReaderText" style="font-family:'Space Mono',monospace;font-size:.85rem;line-height:1.7;color:#cccc88;letter-spacing:.02em;"></div>
-        <button id="tipReaderClose" style="font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.15em;padding:.45rem 1.4rem;border-radius:8px;border:1px solid #3a3a1a;background:#1a1a04;color:#aaaa44;cursor:pointer;touch-action:manipulation;margin-top:.3rem;">CLOSE</button>
+        <div id="tipReaderText" style="font-family:'Space Mono',monospace;font-size:1.53rem;line-height:1.7;color:#cccc88;letter-spacing:.02em;"></div>
+        <button id="tipReaderClose" style="font-family:'Bebas Neue',sans-serif;font-size:1.44rem;letter-spacing:.15em;padding:.55rem 1.8rem;border-radius:8px;border:1px solid #3a3a1a;background:#1a1a04;color:#aaaa44;cursor:pointer;touch-action:manipulation;margin-top:.3rem;">CLOSE</button>
       </div>
     </div>
   </div>
@@ -1621,7 +1621,7 @@ function readSlot(i){try{const d=localStorage.getItem(SAVE_KEYS[i]);return d?JSO
 function writeSlot(i,data){try{localStorage.setItem(SAVE_KEYS[i],JSON.stringify({...data,ts:Date.now()}));}catch(e){}}
 function getSlotName(i){try{return localStorage.getItem('ab_slot_name_'+i)||'';}catch(e){return'';}}
 function setSlotName(i,name){try{localStorage.setItem('ab_slot_name_'+i,name);}catch(e){}}
-function deleteSlot(i){try{localStorage.removeItem(SAVE_KEYS[i]);}catch(e){}}
+function deleteSlot(i){try{localStorage.removeItem(SAVE_KEYS[i]);localStorage.removeItem('ab_slot_name_'+i);}catch(e){}}
 function slotSummary(data){
   if(!data)return null;
   const d=new Date(data.ts);
@@ -3366,6 +3366,13 @@ function resumeMatchGrid(saved){
   grid.style.alignContent='start';
   grid.style.maxWidth='';
   grid.style.margin='';
+  // Constrain card width so all rows fit on screen (3:4 ratio, so height = width * 4/3)
+  const cardRows=Math.ceil(total/cols);
+  const availH=window.innerHeight*0.72;
+  const maxCardH=Math.floor((availH-(cardRows-1)*6)/cardRows);
+  const maxCardW=Math.floor(maxCardH*3/4);
+  const gridW=Math.min(520,cols*maxCardW+(cols-1)*6+24);
+  grid.style.maxWidth=gridW+'px';
   const fontSize=total<=8?'2rem':total<=16?'1.6rem':total<=32?'1.2rem':total<=60?'.9rem':'.7rem';
   grid.style.setProperty('--mcard-font',fontSize);
 
@@ -3434,6 +3441,13 @@ function buildMatchGrid(){
   grid.style.alignContent='start';
   grid.style.maxWidth='';
   grid.style.margin='';
+  // Constrain card width so all rows fit on screen (3:4 ratio)
+  const cardRows=Math.ceil(total/cols);
+  const availH=window.innerHeight*0.72;
+  const maxCardH=Math.floor((availH-(cardRows-1)*6)/cardRows);
+  const maxCardW=Math.floor(maxCardH*3/4);
+  const gridW=Math.min(520,cols*maxCardW+(cols-1)*6+24);
+  grid.style.maxWidth=gridW+'px';
   const fontSize=total<=8?'2rem':total<=16?'1.6rem':total<=32?'1.2rem':total<=60?'.9rem':'.7rem';
   grid.style.setProperty('--mcard-font',fontSize);
 
@@ -3521,7 +3535,7 @@ document.getElementById('matchVictoryClose')&&document.getElementById('matchVict
   matchingMultiplier*=matchRewardForLevel(matchCurrentLevel);
   matchLevelsCompleted=matchCurrentLevel;
   document.getElementById('matchingModal').style.display='none';
-  showToast('🏆 ×'+(matchCurrentLevel===0?2:matchCurrentLevel)+' multiplier added to your tap score!');
+  showToast('🏆 ×'+matchRewardForLevel(matchCurrentLevel)+' multiplier added to your tap score!');
   updateMatchingBtn();
   renderUI();
   autoSave();
