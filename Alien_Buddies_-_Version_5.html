@@ -2328,6 +2328,9 @@ seqExpandBtn&&seqExpandBtn.addEventListener('click',()=>openSeqFull());
 seqFullCloseBtn&&seqFullCloseBtn.addEventListener('click',()=>closeSeqFull());
 
 function openSeqFull(){
+  // Hide sidebar collapse tabs in full sequencer mode
+  document.getElementById('collapseBunkerBtn')&&(document.getElementById('collapseBunkerBtn').style.display='none');
+  document.getElementById('collapseShopBtn')&&(document.getElementById('collapseShopBtn').style.display='none');
   if(!hasSeenSeqHint){
     hasSeenSeqHint=true;
     showHint('🎛','PINCH TO ZOOM IN FOR EASIER READING.\n\n&nbsp;&nbsp;&nbsp;ZOOM OUT BEFORE CLOSING.',null);
@@ -2347,6 +2350,11 @@ function closeSeqFull(){
   }
   setTimeout(()=>{
     seqFullModal.classList.remove('open');
+    // Restore sidebar collapse tabs
+    if(document.body.classList.contains('desktop-mode')&&document.body.classList.contains('game-active')){
+      document.getElementById('collapseBunkerBtn')&&(document.getElementById('collapseBunkerBtn').style.display='');
+      document.getElementById('collapseShopBtn')&&(document.getElementById('collapseShopBtn').style.display='');
+    }
     // Reset inner for next open
     if(inner){inner.style.transform='';inner.style.opacity='';}
     // Force iOS viewport back to 1:1
