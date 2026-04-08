@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Alien Buddies">
@@ -64,7 +64,7 @@ body.store-open #soundboardBtn,body.store-open #padEditToggleBtn,body.store-open
 .confirm-btn.no{background:#1a1a1a;border-color:#333;color:#888;}
 
 /* ─── GAME SCREEN ─── */
-.app{display:flex;flex-direction:column;align-items:center;justify-content:space-between;height:100%;padding:1.4rem 1.5rem 1.5rem;position:relative;}
+.app{display:flex;flex-direction:column;align-items:center;justify-content:space-between;height:100%;padding:1.4rem 1.5rem 1.5rem;padding-top:max(1.4rem,env(safe-area-inset-top,0px));position:relative;}
 #alienLayer{position:fixed;inset:0;pointer-events:none;z-index:15;overflow:hidden;}
 .bouncer{position:absolute;font-size:1.6rem;line-height:1;will-change:transform;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .bouncer-emoji{display:block;}
@@ -406,7 +406,7 @@ body.desktop-mode .pad-grid[data-pads="2"]{max-width:326px;margin:0 auto;}
 .toast.show{opacity:1;}
 
 /* ─── PAGE HEADER ─── */
-.page-header{display:flex;align-items:center;padding:1.7rem 1.4rem .85rem;gap:1rem;flex-shrink:0;}
+.page-header{display:flex;align-items:center;padding:1.7rem 1.4rem .85rem;padding-top:max(1.7rem,env(safe-area-inset-top,0px));gap:1rem;flex-shrink:0;}
 .back-btn{background:#1a1a1a;border:1px solid #333;color:#e8ff00;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.1em;padding:.4rem .8rem;border-radius:6px;cursor:pointer;flex-shrink:0;touch-action:manipulation;transition:background .2s;}
 .back-btn:active{background:#252500;}
 .page-title-wrap{flex:1;}
@@ -517,8 +517,8 @@ body.desktop-mode .pad-grid[data-pads="2"]{max-width:326px;margin:0 auto;}
 .bunker-full-sub{font-size:.32rem;color:#3a6a4a;letter-spacing:.2em;text-transform:uppercase;margin-top:.12rem;}
 
 /* Misc */
-.particle{position:fixed;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;pointer-events:none;z-index:200;animation:floatUp .7s ease-out forwards;}
-@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-65px) scale(.5)}}
+.particle{position:fixed;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;pointer-events:none;z-index:200;animation:floatUp .8s ease-out forwards;}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(.4)}}
 .unlock-flash{position:fixed;inset:0;pointer-events:none;z-index:150;animation:flashFull .55s ease-out forwards;}
 @keyframes flashFull{0%{opacity:.35}100%{opacity:0}}
 .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
@@ -1382,6 +1382,8 @@ body.desktop-mode .store-zoom-hint{display:none;}
     <div class="mp-list" id="mpList"></div>
   </div>
 
+  <!-- FULLSCREEN BUTTON -->
+  <button id="fullscreenBtn" style="position:fixed;top:.7rem;right:.7rem;z-index:299;font-family:'Bebas Neue',sans-serif;font-size:.7rem;letter-spacing:.08em;padding:.28rem .55rem;border-radius:6px;border:1px solid #2a2a2a;background:rgba(10,10,10,.7);color:#444;cursor:pointer;touch-action:manipulation;transition:all .2s;backdrop-filter:blur(4px);">⛶ FULL</button>
 </div><!-- end gameScreen -->
 
 
@@ -3596,6 +3598,7 @@ function startGame(slotIndex){
   // Show desktop collapse buttons now that game is active
   document.body.classList.remove('home-visible');
   document.body.classList.add('game-active');
+  updateFullscreenBtnVisibility();
   buildBunkerGrid();renderUI();
   if(!ambStarted)startAmbience();
   updateSoundboardUnlocked();
@@ -3626,6 +3629,7 @@ function goToHomeScreen(){
   homeScreen.classList.remove('hidden');
   document.body.classList.add('home-visible');
   document.body.classList.remove('game-active');
+  updateFullscreenBtnVisibility();
   buildHomeScreen();
   autoSave();
 }
@@ -4157,7 +4161,7 @@ function buildScoreStats(){
 // ══════════════════════════════════════════════
 //  TAP
 // ══════════════════════════════════════════════
-function spawnParticle(x,y,text,hex){const el=document.createElement('div');el.className='particle';el.textContent=text;el.style.color=hex;el.style.left=(x-20+Math.random()*30-15)+'px';el.style.top=(y-20)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),700);}
+function spawnParticle(x,y,text,hex){const el=document.createElement('div');el.className='particle';el.textContent=text;el.style.color=hex;el.style.left=(x-20+Math.random()*20-10)+'px';el.style.top=(y-40)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),800);}
 function gameViewCenter(){
   if(document.body.classList.contains('desktop-mode')){
     const gv=document.getElementById('gameView');
@@ -4580,6 +4584,46 @@ addEP('openStoreBtn',openStore);
 addEP('closeStoreBtn',closeStore);
 addEP('openBunkerBtn',openBunker);
 addEP('closeBunkerBtn',closeBunker);
+
+// ══════════════════════════════════════════════
+//  FULLSCREEN
+// ══════════════════════════════════════════════
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+function isFullscreen(){
+  return !!(document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement);
+}
+
+function updateFullscreenBtn(){
+  if(!fullscreenBtn)return;
+  const fs=isFullscreen();
+  fullscreenBtn.textContent=fs?'✕ EXIT FULL':'⛶ FULL';
+  fullscreenBtn.style.color=fs?'#00ff88':'#444';
+  fullscreenBtn.style.borderColor=fs?'#1a3a2a':'#2a2a2a';
+}
+
+function toggleFullscreen(){
+  if(isFullscreen()){
+    (document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||function(){}).call(document);
+  } else {
+    const el=document.documentElement;
+    const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;
+    if(req) req.call(el).catch(()=>{});
+    // iOS Safari doesn't support Fullscreen API — try hiding safari UI via scrolling trick
+    else { window.scrollTo(0,1); }
+  }
+}
+
+fullscreenBtn&&fullscreenBtn.addEventListener('click',toggleFullscreen);
+fullscreenBtn&&fullscreenBtn.addEventListener('touchend',e=>{e.preventDefault();toggleFullscreen();});
+document.addEventListener('fullscreenchange',updateFullscreenBtn);
+document.addEventListener('webkitfullscreenchange',updateFullscreenBtn);
+
+// Hide fullscreen button on home screen
+function updateFullscreenBtnVisibility(){
+  if(!fullscreenBtn)return;
+  fullscreenBtn.style.display=document.body.classList.contains('game-active')?'block':'none';
+}
 
 // ══════════════════════════════════════════════
 //  V5 — DESKTOP / RESPONSIVE LAYOUT
