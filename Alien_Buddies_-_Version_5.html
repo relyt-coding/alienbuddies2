@@ -570,8 +570,8 @@ body.desktop-mode .pad-grid[data-pads="2"]{max-width:326px;margin:0 auto;}
 /* ─── DESKTOP LAYOUT ─── */
 /* Only activates when body has .desktop-mode class */
 
-/* Scale up all rem-based text on desktop by ~25% */
-body.desktop-mode{font-size:20px;}
+/* Scale up all rem-based text on desktop */
+body.desktop-mode{font-size:22px;}
 
 /* ── Desktop: cap home screen oversized elements ── */
 body.desktop-mode .home-logo-emoji{font-size:clamp(3rem,8vw,5rem) !important;}
@@ -638,7 +638,7 @@ body.desktop-mode .seq-song-slot-name,
 body.desktop-mode .seq-song-slot-bars,
 body.desktop-mode .seq-pill-name,
 body.desktop-mode #padKeybindDisplay{
-  font-size:max(0.7rem, 0.7rem) !important;
+  font-size:max(0.78rem, 12px) !important;
   font-family:'Bebas Neue',sans-serif !important;
   letter-spacing:.08em !important;
   min-height:unset;
@@ -652,7 +652,7 @@ body.desktop-mode #alienNameBox *[style*="font-size:."],
 body.desktop-mode #padAssignInner *[style*="font-size:."],
 body.desktop-mode #tipsModal *[style*="font-size:."],
 body.desktop-mode #settingsBox *[style*="font-size:."]{
-  font-size:max(0.68rem, 11px) !important;
+  font-size:max(0.75rem, 12px) !important;
   font-family:'Bebas Neue',sans-serif !important;
   letter-spacing:.08em !important;
 }
@@ -692,7 +692,7 @@ body.desktop-mode .slot-name,
 body.desktop-mode .game-title,
 body.desktop-mode .nav-btn,
 body.desktop-mode .back-btn{
-  font-size:max(0.85rem, 14px) !important;
+  font-size:max(0.95rem, 15px) !important;
   font-family:'Bebas Neue',sans-serif !important;
   letter-spacing:.08em !important;
 }
@@ -702,7 +702,7 @@ body.desktop-mode{overflow:hidden;}
 /* Outer shell: 3-column grid — bunker | game | shop */
 body.desktop-mode #gameScreen{
   display:grid !important;
-  grid-template-columns:var(--bunker-w,300px) 1fr var(--shop-w,320px);
+  grid-template-columns:var(--bunker-w,360px) 1fr var(--shop-w,380px);
   grid-template-rows:100vh;
   height:100vh;
   overflow:hidden;
@@ -814,7 +814,7 @@ body.desktop-mode.bunker-open #padEditToggleBtn,
 body.desktop-mode.bunker-open #partyBtn{display:block !important;}
 /* On desktop: party button sits just inside the right edge of the game view column */
 body.desktop-mode #partyBtn{
-  right:calc(var(--shop-w,320px) + 1.4rem);
+  right:calc(var(--shop-w,380px) + 1.4rem);
   transform:none;
   z-index:52;
 }
@@ -4742,7 +4742,7 @@ function updatePartyBtnPosition(){
   if(!pb) return;
   const sv = document.getElementById('storeView');
   const shopCollapsed = sv && sv.classList.contains('sidebar-collapsed');
-  pb.style.right = shopCollapsed ? '1.4rem' : 'calc(320px + 1.4rem)';
+  pb.style.right = shopCollapsed ? '1.4rem' : 'calc(380px + 1.4rem)';
 }
 
 function updateCollapseBtn(side, collapsed){
