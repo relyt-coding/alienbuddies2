@@ -3594,16 +3594,17 @@ function buildHomeScreen(){
     const icon=document.createElement('div');icon.className='slot-icon';icon.textContent=sum?'👽':'🌑';
     const info=document.createElement('div');info.className='slot-info';
     const slotLabel=getSlotName(i)||(sum?`SLOT ${i+1}`:`SLOT ${i+1} — EMPTY`);
+    const nameWrap=document.createElement('div');nameWrap.style.cssText='display:flex;align-items:center;gap:.4rem;';
     const name=document.createElement('div');name.className='slot-name'+(sum?'':' empty');name.textContent=slotLabel;
-    // Allow renaming by double-clicking/long-pressing the name
-    name.title='Double-click to rename';
-    name.style.cursor='text';
-    name.addEventListener('dblclick',e=>{e.stopPropagation();promptSlotRename(i,name);});
-    name.addEventListener('touchstart',e=>{name._tstart=Date.now();},{passive:true});
-    name.addEventListener('touchend',e=>{if(Date.now()-name._tstart>500){e.preventDefault();e.stopPropagation();promptSlotRename(i,name);}});
+    const editBtn=document.createElement('button');
+    editBtn.textContent='✏';editBtn.title='Rename slot';
+    editBtn.style.cssText="font-size:.65rem;padding:.1rem .28rem;border-radius:4px;border:1px solid #2a2a2a;background:transparent;color:#444;cursor:pointer;touch-action:manipulation;line-height:1;flex-shrink:0;";
+    editBtn.addEventListener('click',e=>{e.stopPropagation();promptSlotRename(i,name);});
+    editBtn.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();promptSlotRename(i,name);});
+    nameWrap.appendChild(name);nameWrap.appendChild(editBtn);
     const detail=document.createElement('div');detail.className='slot-detail'+(sum?'':' empty');
     detail.textContent=sum?`${formatNum(sum.score)} pts · ${sum.aliens} aliens · ${sum.date}`:'press to start a new game';
-    info.appendChild(name);info.appendChild(detail);
+    info.appendChild(nameWrap);info.appendChild(detail);
     const mainArea=document.createElement('div');mainArea.style.cssText='display:flex;align-items:center;gap:.9rem;flex:1;min-width:0;';
     mainArea.appendChild(icon);mainArea.appendChild(info);
     mainArea.addEventListener('click',()=>startGame(i));
@@ -4648,18 +4649,17 @@ addEP('closeBunkerBtn',closeBunker);
 // ══════════════════════════════════════════════
 //  FULLSCREEN
 // ══════════════════════════════════════════════
-const fullscreenBtn = document.getElementById('fullscreenBtn');
-
 function isFullscreen(){
   return !!(document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement);
 }
 
 function updateFullscreenBtn(){
-  if(!fullscreenBtn)return;
+  const btn=document.getElementById('settingsFullscreenBtn');
+  if(!btn)return;
   const fs=isFullscreen();
-  fullscreenBtn.textContent=fs?'✕ EXIT FULL':'⛶ FULL';
-  fullscreenBtn.style.color=fs?'#00ff88':'#444';
-  fullscreenBtn.style.borderColor=fs?'#1a3a2a':'#2a2a2a';
+  btn.textContent=fs?'✕ EXIT FULLSCREEN':'⛶ ENTER FULLSCREEN';
+  btn.style.color=fs?'#00ff88':'#888';
+  btn.style.borderColor=fs?'#00ff88':'#333';
 }
 
 function toggleFullscreen(){
@@ -4669,17 +4669,14 @@ function toggleFullscreen(){
     const el=document.documentElement;
     const req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen;
     if(req) req.call(el).catch(()=>{});
-    // iOS Safari doesn't support Fullscreen API — try hiding safari UI via scrolling trick
-    else { window.scrollTo(0,1); }
   }
 }
 
-fullscreenBtn&&fullscreenBtn.addEventListener('click',toggleFullscreen);
-fullscreenBtn&&fullscreenBtn.addEventListener('touchend',e=>{e.preventDefault();toggleFullscreen();});
+const _fsbtn=document.getElementById('settingsFullscreenBtn');
+if(_fsbtn) _fsbtn.addEventListener('click',()=>{toggleFullscreen();setTimeout(updateFullscreenBtn,200);});
 document.addEventListener('fullscreenchange',updateFullscreenBtn);
 document.addEventListener('webkitfullscreenchange',updateFullscreenBtn);
 
-// Hide fullscreen button on home screen
 function updateFullscreenBtnVisibility(){
   const btn=document.getElementById('settingsFullscreenBtn');
   if(!btn)return;
