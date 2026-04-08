@@ -909,6 +909,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
 
     <button class="settings-close-btn" id="settingsFullscreenBtn" style="display:none;">⛶ ENTER FULLSCREEN</button>
     <button class="settings-close-btn" id="settingsArchipelagoBtn" style="background:#0a1a1a;border-color:#00ccaa;color:#00ccaa;" onclick="alert('🌐 Archipelago multiworld features coming soon!')">🌐 ARCHIPELAGO SETTINGS</button>
+    <button class="settings-close-btn" id="settingsSeqResetBtn" style="background:#1a0a00;border-color:#ff8800;color:#ff8800;">🎛 RESET SEQUENCER</button>
     <button class="settings-close-btn" id="settingsDonateBtn" style="background:#0a0a1a;border-color:#6699ff;color:#6699ff;" onclick="window.open('https://streamlabs.com/attackingtucans/tip','_blank')">💙 SUPPORT THE DEVELOPER</button>
     <button class="settings-close-btn" id="settingsSaveExitBtn" style="background:#0a1a0f;border-color:#00ff88;color:#00ff88;">💾 SAVE AND EXIT</button>
     <button class="settings-close-btn" id="settingsCloseBtn">DONE</button>
@@ -1378,6 +1379,20 @@ body.desktop-mode .store-zoom-hint{display:none;}
   </div>
 
 
+  <!-- SEQUENCER RESET MODAL -->
+  <div id="seqResetModal" style="position:fixed;inset:0;z-index:320;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(8px);">
+    <div style="background:#111;border:1px solid #2a1a00;border-radius:16px;padding:1.6rem 1.4rem;max-width:320px;width:100%;display:flex;flex-direction:column;gap:.75rem;align-items:stretch;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:.15em;color:#ff8800;text-align:center;">🎛 RESET SEQUENCER</div>
+      <div style="font-size:.6rem;color:#555;letter-spacing:.12em;text-transform:uppercase;text-align:center;margin-bottom:.25rem;">Choose what to clear — purchases kept</div>
+      <button class="settings-close-btn" id="seqResetSteps" style="background:#1a0e00;border-color:#ff8800;color:#ff8800;">🗑 CLEAR CURRENT NOTES</button>
+      <div style="font-size:.55rem;color:#444;letter-spacing:.08em;text-align:center;margin-top:-.3rem;">Clears all steps in the current pattern editor</div>
+      <button class="settings-close-btn" id="seqResetPatterns" style="background:#1a0e00;border-color:#ff6600;color:#ff6600;">🗑 CLEAR SAVED PATTERNS &amp; ARRANGEMENTS</button>
+      <div style="font-size:.55rem;color:#444;letter-spacing:.08em;text-align:center;margin-top:-.3rem;">Deletes all your saved patterns, arrangements and songs</div>
+      <button class="settings-close-btn" id="seqResetFull" style="background:#1a0500;border-color:#ff3300;color:#ff3300;">⚠️ FULL SEQUENCER RESET</button>
+      <div style="font-size:.55rem;color:#444;letter-spacing:.08em;text-align:center;margin-top:-.3rem;">Clears everything above + resets BPM to 120 and restores default sounds</div>
+      <button class="settings-close-btn" id="seqResetCancel" style="margin-top:.25rem;">CANCEL</button>
+    </div>
+  </div>
 </div><!-- end gameScreen -->
 
 
@@ -1631,13 +1646,24 @@ function slotSummary(data){
 }
 function autoSave(){
   if(activeSlot<0)return;
+  // Snapshot current sequencer layers (steps only, no DOM refs)
+  const seqLayersSnap=seqLayers.map(l=>({soundId:l.soundId,steps:[...l.steps],muted:l.muted}));
   writeSlot(activeSlot,{
     score,tiers,autoTiers,
     shop:{autoLevel:shop.autoLevel,multLevel:shop.multLevel,alienBoostLevel:shop.alienBoostLevel,multiClickLevel:shop.multiClickLevel,alienBoostUnlocked:shop.alienBoostUnlocked,multiClickUnlocked:shop.multiClickUnlocked},
     totalAliens,alienData,
     drum:{pads:drum.pads,extraSounds:drum.extraSounds,seqTracks:drum.seqTracks},
     matchLevelsCompleted,matchingMultiplier,matchSavedState,tipsOwned,tipsMult,drumTrackerActive,shopOpenCount,hasSeenSeqHint,
-    savedPatterns,savedArrangements,songSlots
+    savedPatterns,savedArrangements,songSlots,
+    padSounds:[...padSounds],
+    soundVols:{...soundVols},
+    visiblePads,
+    seqBpm,
+    seqMode,
+    arrangement:[...arrangement],
+    arrangeBars,
+    seqLayersSnap,
+    seqHasAutoMutedAmbience
   });
 }
 
@@ -1741,13 +1767,38 @@ if(typeof applyBouncerNameVisibility==='function')applyBouncerNameVisibility();
 updateMatchingBtn();
   if(shop.autoLevel>=0){if(autoInterval)clearInterval(autoInterval);startAutoClicker();}
   // Restore pad sounds
-  padSounds=[];
-  for(let i=0;i<5;i++){
-    const def=PAD_DEFAULT_SOUNDS[i];
-    padSounds.push(i<drum.pads?def:null);
+  // Restore pad sounds (use saved if available, else defaults)
+  if(data.padSounds&&data.padSounds.length){
+    padSounds=[...data.padSounds];
+    // Ensure array is long enough
+    while(padSounds.length<8)padSounds.push(null);
+  }else{
+    padSounds=[];
+    for(let i=0;i<8;i++){const def=PAD_DEFAULT_SOUNDS[i];padSounds.push(i<drum.pads?def:null);}
   }
+  // Restore sound volumes
+  if(data.soundVols)Object.assign(soundVols,data.soundVols);
+  // Restore visible pads
+  if(data.visiblePads!==undefined)visiblePads=data.visiblePads;
+  else visiblePads=drum.pads;
+  // Restore sequencer state
+  if(data.seqBpm)seqBpm=data.seqBpm;
+  if(data.seqMode)seqMode=data.seqMode;
+  if(data.arrangement)arrangement=[...data.arrangement];
+  if(data.arrangeBars)arrangeBars=data.arrangeBars;
+  if(data.seqHasAutoMutedAmbience)seqHasAutoMutedAmbience=data.seqHasAutoMutedAmbience;
   rebuildPadGrid();
+  // Rebuild sequencer with saved layers
   rebuildSeqUI();
+  // Restore current sequencer layers into the editor after rebuild
+  if(data.seqLayersSnap&&data.seqLayersSnap.length&&drum.seqTracks>0){
+    seqLayersContainer.innerHTML='';seqLayers=[];
+    data.seqLayersSnap.forEach(snap=>{
+      if(seqLayers.length<drum.seqTracks)addSeqLayer(snap.soundId,[...snap.steps]);
+      if(seqLayers.length>0)seqLayers[seqLayers.length-1].muted=snap.muted||false;
+    });
+    updateSeqAddBtn();
+  }
 }
 setInterval(()=>{if(activeSlot>=0)autoSave();},10000);
 
@@ -4906,6 +4957,72 @@ document.getElementById('settingsSaveExitBtn')&&document.getElementById('setting
 });
 
 document.getElementById('settingsCloseBtn')&&document.getElementById('settingsCloseBtn').addEventListener('click',closeSettings);
+
+// ── Reset Sequencer ──
+function openSeqResetModal(){
+  closeSettings();
+  document.getElementById('seqResetModal').style.display='flex';
+}
+function closeSeqResetModal(){
+  document.getElementById('seqResetModal').style.display='none';
+}
+
+function clearCurrentNotes(){
+  // Clear all steps in all current editor layers
+  seqLayers.forEach(layer=>{
+    layer.steps.fill(false);
+    layer.stepEls.forEach(el=>el.classList.remove('on'));
+    layer.fullStepEls&&layer.fullStepEls.forEach(el=>el.classList.remove('on'));
+  });
+  closeSeqResetModal();
+  showToast('🎛 Current pattern cleared');
+  autoSave();
+}
+
+function clearSavedPatternsAndArrangements(){
+  savedPatterns=[];
+  savedArrangements=[];
+  songSlots=[];
+  arrangement=[];
+  buildPatLibrary&&buildPatLibrary();
+  buildArrGrid&&buildArrGrid();
+  closeSeqResetModal();
+  showToast('🎛 Patterns, arrangements & songs cleared');
+  autoSave();
+}
+
+function fullSeqReset(){
+  // Clear current notes
+  seqLayers.forEach(layer=>{
+    layer.steps.fill(false);
+    layer.stepEls.forEach(el=>el.classList.remove('on'));
+    layer.fullStepEls&&layer.fullStepEls.forEach(el=>el.classList.remove('on'));
+  });
+  // Clear saved
+  savedPatterns=[];savedArrangements=[];songSlots=[];arrangement=[];
+  // Reset BPM
+  seqBpm=120;updateBpmDisplay();
+  if(seqPlaying){stopSeq();startSeq();}
+  // Restore default sounds on pads
+  for(let i=0;i<padSounds.length;i++) padSounds[i]=i<drum.pads?(PAD_DEFAULT_SOUNDS[i]||null):null;
+  rebuildPadGrid();
+  // Rebuild sequencer with default first layer
+  if(drum.seqTracks>0){
+    seqLayersContainer.innerHTML='';seqLayers=[];
+    addSeqLayer('hihat');
+    updateSeqAddBtn();
+  }
+  closeSeqResetModal();
+  showToast('🎛 Sequencer fully reset to defaults');
+  autoSave();
+}
+
+document.getElementById('settingsSeqResetBtn')&&document.getElementById('settingsSeqResetBtn').addEventListener('click',openSeqResetModal);
+document.getElementById('seqResetSteps')&&document.getElementById('seqResetSteps').addEventListener('click',()=>{if(confirm('Clear all current notes in the pattern editor?'))clearCurrentNotes();});
+document.getElementById('seqResetPatterns')&&document.getElementById('seqResetPatterns').addEventListener('click',()=>{if(confirm('Delete all saved patterns, arrangements and songs? This cannot be undone.'))clearSavedPatternsAndArrangements();});
+document.getElementById('seqResetFull')&&document.getElementById('seqResetFull').addEventListener('click',()=>{if(confirm('Full sequencer reset? Clears all notes, patterns, arrangements, resets BPM and pad sounds. Cannot be undone.'))fullSeqReset();});
+document.getElementById('seqResetCancel')&&document.getElementById('seqResetCancel').addEventListener('click',closeSeqResetModal);
+document.getElementById('seqResetModal')&&document.getElementById('seqResetModal').addEventListener('click',e=>{if(e.target===document.getElementById('seqResetModal'))closeSeqResetModal();});
 document.getElementById('settingsPanel')&&document.getElementById('settingsPanel').addEventListener('click',function(e){
   if(e.target===this) closeSettings();
 });
