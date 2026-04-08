@@ -4431,7 +4431,7 @@ function renderStore(){
     document.getElementById('padButtonsSub2').textContent=padDescs[nextPadIdx];
     const btn=document.getElementById('padButtonsBtn');btn.className='drum-buy-btn '+(canBuy?'buyable':'locked');
     const pr=document.getElementById('padButtonsPrice');pr.className='drum-price'+(canBuy?'':' cant-afford');
-    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>need ${formatStore(cost-score)}</small>`;
+    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>pts</small>`;
   }
   // ── DRUM: SOUND LIBRARY ──
   const totalSounds=8+drum.extraSounds;const nextSoundIdx=drum.extraSounds;
@@ -4449,7 +4449,7 @@ function renderStore(){
     document.getElementById('soundLibSub2').textContent=(nextSnd?nextSnd.desc:'New sound for your pads')+' · +×1.2 tap mult';
     const btn=document.getElementById('soundLibBtn');btn.className='drum-buy-btn '+(canBuy?'buyable':'locked');
     const pr=document.getElementById('soundLibPrice');pr.className='drum-price'+(canBuy?'':' cant-afford');
-    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>need ${formatStore(cost-score)}</small>`;
+    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>pts</small>`;
   }
   // ── DRUM: SEQUENCER ──
   const tracks=drum.seqTracks;const atMaxTracks=tracks>=MAX_SEQ_TRACKS;
@@ -4465,7 +4465,7 @@ function renderStore(){
     document.getElementById('seqSub2').textContent=(tracks===0?'1-track loop recorder — each step = score':`Add track ${tracks+1} of 6 — layer more sounds`)+' · +×1.2 tap mult';
     const btn=document.getElementById('seqBtn');btn.className='drum-buy-btn '+(canBuy?'buyable':'locked');
     const pr=document.getElementById('seqPrice');pr.className='drum-price'+(canBuy?'':' cant-afford');
-    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>need ${formatStore(cost-score)}</small>`;
+    pr.innerHTML=canBuy?`${formatStore(cost)}<small>pts</small>`:`${formatStore(cost)}<small>pts</small>`;
   }
   // ── AUTO ──
   const nextA=autoUpgradeAt(shop.autoLevel+1),canA=score>=nextA.cost;
@@ -4476,7 +4476,7 @@ function renderStore(){
   document.getElementById('autoEffectSub').textContent=nextA.effectSub;
   const ab=document.getElementById('autoNextBtn');ab.className='upgrade-buy-btn '+(canA?'buyable':'locked');
   const ap=document.getElementById('autoPrice');ap.className='upgrade-price'+(canA?'':' cant-afford');
-  ap.innerHTML=canA?`${formatStore(nextA.cost)}<small>pts</small>`:`${formatStore(nextA.cost)}<small>need ${formatStore(nextA.cost-score)}</small>`;
+  ap.innerHTML=canA?`${formatStore(nextA.cost)}<small>pts</small>`:`${formatStore(nextA.cost)}<small>pts</small>`;
   // ── MULT ──
   const nextM=multUpgradeAt(shop.multLevel+1),canM=score>=nextM.cost;
   document.getElementById('multCounterNum').textContent=shop.multLevel+1;
@@ -4484,7 +4484,7 @@ function renderStore(){
   document.getElementById('multEffectSub').textContent=nextM.effectSub;
   const mb=document.getElementById('multNextBtn');mb.className='upgrade-buy-btn '+(canM?'buyable':'locked');
   const mp=document.getElementById('multPrice');mp.className='upgrade-price'+(canM?'':' cant-afford');
-  mp.innerHTML=canM?`${formatStore(nextM.cost)}<small>pts</small>`:`${formatStore(nextM.cost)}<small>need ${formatStore(nextM.cost-score)}</small>`;
+  mp.innerHTML=canM?`${formatStore(nextM.cost)}<small>pts</small>`:`${formatStore(nextM.cost)}<small>pts</small>`;
   // ── MULTI-CLICK ──
   const mcUnlocked=shop.multiClickUnlocked;const mcLock=document.getElementById('multiClickLock');
   if(mcUnlocked){mcLock.classList.add('unlocked');}
@@ -4495,7 +4495,7 @@ function renderStore(){
   document.getElementById('multiClickEffectMain').textContent=nextMC.effectMain;document.getElementById('multiClickEffectSub').textContent=nextMC.effectSub;
   const mcBtn=document.getElementById('multiClickNextBtn');mcBtn.className='upgrade-buy-btn '+(canMC?'buyable':'locked');mcBtn.style.borderColor=canMC?'#cc88ff':'';
   const mcP=document.getElementById('multiClickPrice');mcP.className='upgrade-price'+(canMC?'':' cant-afford');
-  mcP.innerHTML=canMC?`${formatStore(nextMC.cost)}<small>pts</small>`:`${formatStore(nextMC.cost)}<small>need ${formatStore(nextMC.cost-score)}</small>`;
+  mcP.innerHTML=canMC?`${formatStore(nextMC.cost)}<small>pts</small>`:`${formatStore(nextMC.cost)}<small>pts</small>`;
   // ── ALIEN BOOST ──
   const abUnlocked=shop.alienBoostUnlocked;const abLock=document.getElementById('alienBoostLock');
   if(abUnlocked){abLock.classList.add('unlocked');}
@@ -4507,7 +4507,7 @@ function renderStore(){
   document.getElementById('alienBoostEffectMain').textContent=nextAB.effectMain;document.getElementById('alienBoostEffectSub').textContent=nextAB.effectSub;
   const abBtn=document.getElementById('alienBoostNextBtn');abBtn.className='upgrade-buy-btn '+(canAB?'buyable':'locked');abBtn.style.borderColor=canAB?'#00ccff':'';
   const abP=document.getElementById('alienBoostPrice');abP.className='upgrade-price'+(canAB?'':' cant-afford');
-  abP.innerHTML=canAB?`${formatStore(nextAB.cost)}<small>pts</small>`:`${formatStore(nextAB.cost)}<small>need ${formatStore(nextAB.cost-score)}</small>`;
+  abP.innerHTML=canAB?`${formatStore(nextAB.cost)}<small>pts</small>`:`${formatStore(nextAB.cost)}<small>pts</small>`;
   // ── ALIEN ──
   const nc=alienCost(totalAliens),canAl=score>=nc;
   const perAlienBase=(1.1+(shop.alienBoostLevel>=0?(shop.alienBoostLevel+1)*0.3:0)).toFixed(1);
@@ -4517,7 +4517,7 @@ function renderStore(){
   document.getElementById('alienNextBoostStat').textContent=`×${formatMult(nb)} (×${perAlienBase} each)`;
   const ab2=document.getElementById('alienBuyBtn');ab2.className='alien-store-card '+(canAl?'buyable':'locked');
   const ap2=document.getElementById('alienCardPrice');ap2.className='alien-card-price'+(canAl?'':' cant-afford');
-  ap2.innerHTML=canAl?`${formatStore(nc)}<small>pts</small>`:`${formatStore(nc)}<small>need ${formatStore(nc-score)}</small>`;
+  ap2.innerHTML=canAl?`${formatStore(nc)}<small>pts</small>`:`${formatStore(nc)}<small>pts</small>`;
 }
 
 // ══════════════════════════════════════════════
