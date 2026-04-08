@@ -769,6 +769,11 @@ body.desktop-mode.bunker-open #bunkerView{transform:none !important;}
 
 /* Sidebar scroll areas */
 body.desktop-mode .store-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* Prevent sequencer from overflowing game column */
+body.desktop-mode .app{overflow:hidden;}
+body.desktop-mode .seq-area{overflow:hidden;box-sizing:border-box;}
+body.desktop-mode .seq-layer-row{min-width:0;}
+body.desktop-mode .seq-steps{min-width:0;overflow:hidden;}
 /* Stack performance/tier2 upgrade cards vertically on desktop — no cramped columns */
 body.desktop-mode .tracks-row{flex-direction:column;gap:.5rem;}
 body.desktop-mode .upgrade-card{flex:none;width:100%;}
@@ -807,6 +812,17 @@ body.desktop-mode.store-open #partyBtn,
 body.desktop-mode.bunker-open #soundboardBtn,
 body.desktop-mode.bunker-open #padEditToggleBtn,
 body.desktop-mode.bunker-open #partyBtn{display:block !important;}
+/* On desktop: party button sits just inside the right edge of the game view column */
+body.desktop-mode #partyBtn{
+  right:calc(var(--shop-w,320px) + 1.4rem);
+  transform:none;
+  z-index:52;
+}
+/* When shop is collapsed, move it back to normal right edge */
+body.desktop-mode #storeView.sidebar-collapsed ~ * #partyBtn,
+body.desktop-mode #partyBtn.shop-collapsed{
+  right:1.4rem;
+}
 
 /* Desktop: alienLayer spans full width, above sidebars but below modals */
 body.desktop-mode #alienLayer{z-index:180;}
@@ -910,7 +926,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
         <span class="settings-toggle-thumb"></span>
       </label>
     </div>
-    <button class="settings-danger-btn" id="settingsResetBtn">🗑 RESET THIS SAVE FILE</button>
+    <button class="settings-close-btn" id="settingsSaveExitBtn" style="background:#0a1a0f;border-color:#00ff88;color:#00ff88;">💾 SAVE AND EXIT</button>
     <button class="settings-close-btn" id="settingsCloseBtn">DONE</button>
   </div>
 </div>
@@ -1713,6 +1729,8 @@ function loadFromSave(data){
 // Fill missing entries
 for(let i=alienData.length;i<totalAliens;i++)alienData.push({name:'',color:getAlienColor(i)});
 for(let i=0;i<totalAliens;i++)spawnBouncer(false);
+// Ensure names display correctly after load
+if(typeof applyBouncerNameVisibility==='function')applyBouncerNameVisibility();
 updateMatchingBtn();
   if(shop.autoLevel>=0){if(autoInterval)clearInterval(autoInterval);startAutoClicker();}
   // Restore pad sounds
@@ -2313,8 +2331,8 @@ function applySeqView(){
   vtbTiersBtn.classList.toggle('active',!showSeq);
 }
 
-vtbSeqBtn&&vtbSeqBtn.addEventListener('click',()=>{seqViewMode='seq';applySeqView();});
-vtbTiersBtn&&vtbTiersBtn.addEventListener('click',()=>{seqViewMode='tiers';applySeqView();});
+vtbSeqBtn&&vtbSeqBtn.addEventListener('click',()=>{seqViewMode='seq';applySeqView();setTimeout(clampBouncersToBounds,50);});
+vtbTiersBtn&&vtbTiersBtn.addEventListener('click',()=>{seqViewMode='tiers';applySeqView();setTimeout(clampBouncersToBounds,50);});
 
 // Fullscreen modal
 seqExpandBtn&&seqExpandBtn.addEventListener('click',()=>openSeqFull());
@@ -2659,7 +2677,7 @@ function startSeq(){
           btn&&(btn.classList.remove('flash'),void btn.offsetWidth,btn.classList.add('flash'));
           const fbtn=layer.fullStepEls[seqStep];
           fbtn&&(fbtn.classList.remove('flash'),void fbtn.offsetWidth,fbtn.classList.add('flash'));
-          if(!layer.muted){getCtx();playSound(layer.soundId);doTap({x:window.innerWidth/2,y:window.innerHeight/2,silent:true,seq:true});}
+          if(!layer.muted){getCtx();playSound(layer.soundId);doTap({...gameViewCenter(),silent:true,seq:true});}
         }
       });
       seqStep=(seqStep+1)%STEPS;
@@ -2669,7 +2687,7 @@ function startSeq(){
       const pat=arrangement[arrBar]!=null?savedPatterns[arrangement[arrBar]]:null;
       if(pat){
         pat.layers.forEach(layer=>{
-          if(layer.steps[arrBarStep]&&!layer.muted){getCtx();playSound(layer.soundId);doTap({x:window.innerWidth/2,y:window.innerHeight/2,silent:true,seq:true});}
+          if(layer.steps[arrBarStep]&&!layer.muted){getCtx();playSound(layer.soundId);doTap({...gameViewCenter(),silent:true,seq:true});}
         });
       }
       arrBarStep++;
@@ -2687,7 +2705,7 @@ function startSeq(){
         const pat=arr.arrangement[songArrBar]!=null?savedPatterns[arr.arrangement[songArrBar]]:null;
         if(pat){
           pat.layers.forEach(layer=>{
-            if(layer.steps[songArrBarStep]&&!layer.muted){getCtx();playSound(layer.soundId);doTap({x:window.innerWidth/2,y:window.innerHeight/2,silent:true,seq:true});}
+            if(layer.steps[songArrBarStep]&&!layer.muted){getCtx();playSound(layer.soundId);doTap({...gameViewCenter(),silent:true,seq:true});}
           });
         }
         songArrBarStep++;
@@ -3590,6 +3608,9 @@ function startGame(slotIndex){
 }
 
 function goToHomeScreen(){
+  // Clear all bouncers from the DOM
+  bouncers.forEach(b=>b.el.remove());
+  bouncers.length=0;
   // Return to slot select screen
   gameScreen.style.display='none';
   homeScreen.style.display='';
@@ -3609,6 +3630,16 @@ let showBouncerNames=true;
 const bouncers=[];
 const alienLayer=document.getElementById('alienLayer');
 function getAlienColor(idx){return ALIEN_OUTLINE_COLORS[idx%ALIEN_OUTLINE_COLORS.length];}
+// Snap all bouncers back inside current bounds (call after layout changes)
+function clampBouncersToBounds(){
+  const bounds=getBouncerBounds();
+  for(const b of bouncers){
+    b.x=Math.min(Math.max(b.x,bounds.x),bounds.x+bounds.w-b.sz);
+    b.y=Math.min(Math.max(b.y,bounds.y),bounds.y+bounds.h-b.sz);
+    if(b.el)b.el.style.transform=`translate(${b.x}px,${b.y}px) scale(${b._scale||1})`;
+  }
+}
+
 // Get the bounds bouncers should stay within — game view column on desktop, full screen on mobile
 function getBouncerBounds(){
   if(document.body.classList.contains('desktop-mode')){
@@ -3625,7 +3656,7 @@ function spawnBouncer(animate=true){
   const data=alienData[idx]||{name:'',color:col};
   const el=document.createElement('div');el.className='bouncer';
   const emojiSpan=document.createElement('span');emojiSpan.className='bouncer-emoji';emojiSpan.textContent='👽';
-  const nameSpan=document.createElement('span');nameSpan.className='bouncer-name'+(showBouncerNames?'':' hidden');nameSpan.textContent=data.name||'';nameSpan.style.color=col;nameSpan.style.display=data.name?'block':'none';
+  const nameSpan=document.createElement('span');nameSpan.className='bouncer-name';nameSpan.textContent=data.name||'';nameSpan.style.color=col;nameSpan.style.display=(showBouncerNames&&data.name)?'block':'none';
   el.appendChild(emojiSpan);el.appendChild(nameSpan);
   const filter=`drop-shadow(0 0 4px ${col}) drop-shadow(0 0 1px ${col})`;
   el.style.filter=filter;el._baseFilter=filter;el._col=col;el._nameEl=nameSpan;el._emojiEl=emojiSpan;
@@ -3833,7 +3864,7 @@ function renderBunkerView(){
         const ad=alienData[globalIdx]||{name:''};
         cell.innerHTML='';
         const emojiDiv=document.createElement('div');emojiDiv.textContent='👽';emojiDiv.style.filter=`drop-shadow(0 0 3px ${col})`;emojiDiv.style.lineHeight='1';
-        const nameDiv=document.createElement('div');nameDiv.className='alien-cell-name'+(showBouncerNames?'':' hidden');nameDiv.textContent=ad.name||'';nameDiv.style.color=col;
+        const nameDiv=document.createElement('div');nameDiv.className='alien-cell-name';nameDiv.textContent=ad.name||'';nameDiv.style.color=col;
         cell.appendChild(emojiDiv);cell.appendChild(nameDiv);
         if(ad.name)requestAnimationFrame(()=>fitCellName(nameDiv));
         cell._globalIdx=globalIdx;
@@ -3859,17 +3890,24 @@ toggleBouncersBtn&&toggleBouncersBtn.addEventListener('click',()=>{
   bouncers.forEach(b=>b.el.style.display=showBouncers?'':'none');
   if(document.body.classList.contains('bunker-open'))renderBunkerView();
 });
+function applyBouncerNameVisibility(){
+  bouncers.forEach(b=>{
+    if(!b._nameEl)return;
+    const ad=alienData[b.idx];
+    const hasName=!!(ad&&ad.name);
+    b._nameEl.classList.remove('hidden'); // clear any opacity-only hiding
+    b._nameEl.style.display=(showBouncerNames&&hasName)?'block':'none';
+  });
+}
 toggleNamesBtn&&toggleNamesBtn.addEventListener('click',()=>{
   showBouncerNames=!showBouncerNames;
   toggleNamesBtn.classList.toggle('active',showBouncerNames);
-  // Update bouncing name labels
-  bouncers.forEach(b=>{
-    if(!b._nameEl)return;
-    if(!showBouncerNames){b._nameEl.style.display='none';}
-    else{const ad=alienData[b.idx];b._nameEl.style.display=(ad&&ad.name)?'block':'none';}
-  });
-  // Update bunker grid name labels
-  document.querySelectorAll('.alien-cell-name').forEach(el=>el.classList.toggle('hidden',!showBouncerNames));
+  // Sync settings panel toggle
+  v5Settings.bouncerNames=showBouncerNames;
+  saveV5Settings();
+  const sbToggle=document.getElementById('settingsBouncerNames');
+  if(sbToggle)sbToggle.checked=showBouncerNames;
+  applyBouncerNameVisibility();
 });
 
 // ── Alien Profile Modal ──
@@ -3930,19 +3968,43 @@ function closeAlienNameModal(){
 function saveAlienName(){
   if(alienProfileIdx===null)return;
   const name=alienNameInput.value.trim();
+  // Save to alienData
   while(alienData.length<=alienProfileIdx)alienData.push({name:'',color:getAlienColor(alienData.length)});
   alienData[alienProfileIdx].name=name;
-  // Update floating bouncer label
-  const b=bouncers.find(b=>b.idx===alienProfileIdx);
-  if(b&&b._nameEl){
-    b._nameEl.textContent=name;
-    b._nameEl.style.color=b._col;
-    b._nameEl.style.display=name?'block':'none';
+
+  // Update the floating bouncer label immediately
+  let foundBouncer=false;
+  for(const b of bouncers){
+    if(b.idx===alienProfileIdx&&b._nameEl){
+      b._nameEl.textContent=name;
+      b._nameEl.style.color=b._col;
+      b._nameEl.classList.remove('hidden');
+      b._nameEl.style.display=(showBouncerNames&&!!name)?'block':'none';
+      foundBouncer=true;
+      break;
+    }
   }
-  // Update bunker cell if visible
-  const cellIdx=alienProfileIdx%100;
-  const cell=document.getElementById(`bcell-${cellIdx}`);
-  if(cell){const nd=cell.querySelector('.alien-cell-name');if(nd){nd.textContent=name;nd.style.fontSize='';requestAnimationFrame(()=>fitCellName(nd));}}
+  // Fallback: if bouncer idx > 30 cap, it won't be in bouncers array — that's expected
+  // But also force-refresh all bouncer names in case idx mapping shifted
+  if(!foundBouncer){
+    applyBouncerNameVisibility();
+  }
+
+  // Update bunker grid cell if it's currently visible
+  const bunkerPage=viewingBunker||0;
+  const cellIdx=alienProfileIdx-(bunkerPage*100);
+  if(cellIdx>=0&&cellIdx<100){
+    const cell=document.getElementById(`bcell-${cellIdx}`);
+    if(cell){
+      const nd=cell.querySelector('.alien-cell-name');
+      if(nd){
+        nd.textContent=name;
+        nd.classList.remove('hidden');
+        requestAnimationFrame(()=>fitCellName(nd));
+      }
+    }
+  }
+
   autoSave();
   renderAlienProfile();
 }
@@ -4098,6 +4160,13 @@ function buildScoreStats(){
 //  TAP
 // ══════════════════════════════════════════════
 function spawnParticle(x,y,text,hex){const el=document.createElement('div');el.className='particle';el.textContent=text;el.style.color=hex;el.style.left=(x-20+Math.random()*30-15)+'px';el.style.top=(y-20)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),700);}
+function gameViewCenter(){
+  if(document.body.classList.contains('desktop-mode')){
+    const gv=document.getElementById('gameView');
+    if(gv){const r=gv.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};}
+  }
+  return{x:window.innerWidth/2,y:window.innerHeight/2};
+}
 
 // Update match score display if game is open
 (function(){
@@ -4141,6 +4210,8 @@ function getElCenter(id){
   const el=document.getElementById(id);
   if(!el)return null;
   const r=el.getBoundingClientRect();
+  // If element has no size (hidden/display:none), return null so we fall back to tap coords
+  if(r.width===0&&r.height===0)return null;
   return{x:r.left+r.width/2,y:r.top+r.height/2};
 }
 function doAutoTap(){
@@ -4421,10 +4492,11 @@ function buySeqTrack(){
     }
     showToast('🎛 Sequencer unlocked! Background music muted. Click steps to set beats.');
   }else{
-    // Add another track
-    seqAddBtn.disabled=false;
+    // Add another track — auto-add it immediately, no button press needed
+    const defaults=['hihat','snare','kick','clap','sub','chord'];
+    addSeqLayer(defaults[drum.seqTracks-1]||unlockedSounds()[0]);
     updateSeqAddBtn();
-    showToast(`🎛 Track ${drum.seqTracks} unlocked! Hit + ADD TRACK in the sequencer.`);
+    showToast(`🎛 Track ${drum.seqTracks} unlocked and added!`);
   }
   renderUI();autoSave();
 }
@@ -4568,6 +4640,15 @@ function applyDesktopMode(){
   if(typeof updateOnboardingArrows==='function') setTimeout(updateOnboardingArrows,100);
 }
 
+function updatePartyBtnPosition(){
+  if(!document.body.classList.contains('desktop-mode')) return;
+  const pb = document.getElementById('partyBtn');
+  if(!pb) return;
+  const sv = document.getElementById('storeView');
+  const shopCollapsed = sv && sv.classList.contains('sidebar-collapsed');
+  pb.style.right = shopCollapsed ? '1.4rem' : 'calc(320px + 1.4rem)';
+}
+
 function updateCollapseBtn(side, collapsed){
   if(side==='shop'){
     const btn = document.getElementById('collapseShopBtn');
@@ -4585,6 +4666,7 @@ document.getElementById('collapseShopBtn')&&document.getElementById('collapseSho
   updateCollapseBtn('shop', collapsed);
   // Opening the shop sidebar counts as visiting the shop — hide the arrow
   if(!collapsed){ shopOpenCount=Math.max(shopOpenCount,1); updateOnboardingArrows(); renderStore(); }
+  updatePartyBtnPosition();
   setTimeout(repositionCollapseButtons,350);
 });
 document.getElementById('collapseBunkerBtn')&&document.getElementById('collapseBunkerBtn').addEventListener('click',()=>{
@@ -4670,10 +4752,11 @@ document.getElementById('settingsParticles')&&document.getElementById('settingsP
 document.getElementById('settingsBouncerNames')&&document.getElementById('settingsBouncerNames').addEventListener('change',function(){
   v5Settings.bouncerNames = this.checked;
   saveV5Settings();
-  // Apply immediately to all bouncers
-  document.querySelectorAll('.bouncer-name').forEach(el=>{
-    el.classList.toggle('hidden', !v5Settings.bouncerNames);
-  });
+  // Sync with showBouncerNames so both toggles stay in agreement
+  showBouncerNames = this.checked;
+  const toggleBtn = document.getElementById('toggleNamesBtn');
+  if(toggleBtn) toggleBtn.classList.toggle('active', showBouncerNames);
+  applyBouncerNameVisibility();
 });
 
 // Mobile view toggle
@@ -4685,17 +4768,11 @@ document.getElementById('settingsMobileView')&&document.getElementById('settings
 });
 
 // Reset save file
-document.getElementById('settingsResetBtn')&&document.getElementById('settingsResetBtn').addEventListener('click',()=>{
-  if(confirm('Reset this save file? All progress on this slot will be lost.')){
-    closeSettings();
-    // Wipe the active slot's save data
-    if(typeof activeSlot!=='undefined'&&activeSlot!==null){
-      try{localStorage.removeItem('ab_save_'+activeSlot);}catch(e){}
-    }
-    // Return to home/file select screen
-    if(typeof goToHomeScreen==='function') goToHomeScreen();
-    else location.reload();
-  }
+document.getElementById('settingsSaveExitBtn')&&document.getElementById('settingsSaveExitBtn').addEventListener('click',()=>{
+  closeSettings();
+  autoSave();
+  if(typeof goToHomeScreen==='function') goToHomeScreen();
+  else location.reload();
 });
 
 document.getElementById('settingsCloseBtn')&&document.getElementById('settingsCloseBtn').addEventListener('click',closeSettings);
