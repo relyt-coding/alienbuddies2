@@ -1631,7 +1631,7 @@ function slotSummary(data){
 function autoSave(){
   if(activeSlot<0)return;
   writeSlot(activeSlot,{
-    score,tiers,
+    score,tiers,autoTiers,
     shop:{autoLevel:shop.autoLevel,multLevel:shop.multLevel,alienBoostLevel:shop.alienBoostLevel,multiClickLevel:shop.multiClickLevel,alienBoostUnlocked:shop.alienBoostUnlocked,multiClickUnlocked:shop.multiClickUnlocked},
     totalAliens,alienData,
     drum:{pads:drum.pads,extraSounds:drum.extraSounds,seqTracks:drum.seqTracks},
@@ -1725,6 +1725,12 @@ function loadFromSave(data){
     data.tiers.forEach((_,i)=>ensureTiers(i+1));
     data.tiers.forEach((t,i)=>{tiers[i].litDots=t.litDots||0;tiers[i].multiplierActive=t.multiplierActive||false;});
   }else{ensureTiers(1);}
+  if(data.autoTiers&&data.autoTiers.length){
+    data.autoTiers.forEach((_,i)=>ensureAutoTiers(i+1));
+    data.autoTiers.forEach((t,i)=>{autoTiers[i].litDots=t.litDots||0;autoTiers[i].multiplierActive=t.multiplierActive||false;});
+    document.getElementById('autoTiersCol').style.display='';
+    document.getElementById('tiersDivider').style.display='';
+  }
     alienData=data.alienData||[];
 // Fill missing entries
 for(let i=alienData.length;i<totalAliens;i++)alienData.push({name:'',color:getAlienColor(i)});
