@@ -84,7 +84,7 @@ body.store-open #soundboardBtn,body.store-open #padEditToggleBtn,body.store-open
 .nav-btn.alien-btn:active{background:#001a0a;border-color:#00ff88;}
 
 /* ─── SOUNDBOARD BUTTON (bottom left, replaces options) ─── */
-#padEditToggleBtn{position:fixed;bottom:1.4rem;left:14.2rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
+#padEditToggleBtn{position:fixed;bottom:1.4rem;left:7.8rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
 #socialsBtn{display:none;}
 body.desktop-mode #socialsBtn{display:block;position:fixed;bottom:1.4rem;left:7.8rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
 body.desktop-mode #socialsBtn:active{background:#1a1a1a;border-color:#6699ff;color:#6699ff;}
@@ -822,8 +822,9 @@ body.desktop-mode.bunker-open #padEditToggleBtn,
 body.desktop-mode.bunker-open #socialsBtn,
 body.desktop-mode.bunker-open #partyBtn{display:block !important;}
 /* On desktop: party button sits just inside the right edge of the game view column */
+body.desktop-mode #padEditToggleBtn{right:unset;left:14.2rem;}
 body.desktop-mode #partyBtn{
-  right:calc(var(--shop-w,380px) + 1.4rem);
+  bottom:1.4rem;right:calc(var(--shop-w,380px) + 1.4rem);
   transform:none;
   z-index:52;
 }
@@ -3944,9 +3945,9 @@ function spawnBouncer(animate=true){
 let partyBeat=0;
 const partyOverlay=document.getElementById('partyOverlay');
 const partyBtn=document.getElementById('partyBtn');
-function startParty(){partyMode=true;partyBtn.classList.add('active');partyBtn.textContent='⏹ STOP PARTY';}
+function startParty(){partyMode=true;partyBtn.classList.add('active');partyBtn.textContent='STOP PARTY';}
 function stopParty(){
-  partyMode=false;partyBtn.classList.remove('active');partyBtn.textContent='🎉 ALIEN PARTY';
+  partyMode=false;partyBtn.classList.remove('active');partyBtn.textContent='ALIEN PARTY';
   // Reset all bouncers to their base filter/transform
   bouncers.forEach(b=>{b.el.style.filter=b._baseFilter;b._scale=1;b.el.style.transform=`translate(${b.x}px,${b.y}px) scale(1)`;if(b._partyTimeout){clearTimeout(b._partyTimeout);b._partyTimeout=null;}});
   partyOverlay.classList.remove('active');partyOverlay.style.opacity='0';
