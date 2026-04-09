@@ -85,8 +85,9 @@ body.store-open #soundboardBtn,body.store-open #padEditToggleBtn,body.store-open
 
 /* ─── SOUNDBOARD BUTTON (bottom left, replaces options) ─── */
 #padEditToggleBtn{position:fixed;bottom:1.4rem;left:14.2rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
-#socialsBtn{position:fixed;bottom:1.4rem;left:7.8rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
-#socialsBtn:active{background:#1a1a1a;border-color:#6699ff;color:#6699ff;}
+#socialsBtn{display:none;}
+body.desktop-mode #socialsBtn{display:block;position:fixed;bottom:1.4rem;left:7.8rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
+body.desktop-mode #socialsBtn:active{background:#1a1a1a;border-color:#6699ff;color:#6699ff;}
 #padEditToggleBtn:active{background:#1a1a1a;border-color:#555;}
 #padEditToggleBtn.active{border-color:#a0a8ff;color:#a0a8ff;background:#0a0a1a;box-shadow:0 0 12px -3px rgba(160,168,255,.5);}
 #soundboardBtn{position:fixed;bottom:1.4rem;left:1.4rem;z-index:50;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.08em;padding:.42rem .72rem;border-radius:50px;border:1px solid #333;background:#111;color:#666;cursor:pointer;touch-action:manipulation;transition:border-color .2s,color .2s,background .2s;}
@@ -912,6 +913,7 @@ body.desktop-mode .store-zoom-hint{display:none;}
     </div>
 
     <button class="settings-close-btn" id="settingsFullscreenBtn" style="display:none;">⛶ ENTER FULLSCREEN</button>
+    <button class="settings-close-btn" id="settingsSocialsBtn" style="background:#0a0a1a;border-color:#6699ff;color:#6699ff;">SOCIALS</button>
     <button class="settings-close-btn" id="settingsArchipelagoBtn" style="background:#0a1a1a;border-color:#00ccaa;color:#00ccaa;" onclick="alert('🌐 Archipelago multiworld features coming soon!')">🌐 ARCHIPELAGO SETTINGS</button>
     <button class="settings-close-btn" id="settingsSeqResetBtn" style="background:#1a0a00;border-color:#ff8800;color:#ff8800;">🎛 RESET SEQUENCER</button>
     <button class="settings-close-btn" id="settingsDonateBtn" style="background:#0a0a1a;border-color:#6699ff;color:#6699ff;" onclick="window.open('https://streamlabs.com/attackingtucans/tip','_blank')">💙 SUPPORT THE DEVELOPER</button>
@@ -3809,7 +3811,9 @@ document.getElementById('confirmNo').addEventListener('click',()=>{pendingDelete
 
 function startGame(slotIndex){
   activeSlot=slotIndex;
-  const data=readSlot(slotIndex)||defaultSave();
+  const existingData=readSlot(slotIndex);
+  const isNewFile=!existingData;
+  const data=existingData||defaultSave();
   loadFromSave(data);
   const sn=getSlotName(slotIndex);
   document.getElementById('slotSubtitle').textContent=sn||`SLOT ${slotIndex+1}`;
@@ -3835,6 +3839,12 @@ function startGame(slotIndex){
     }
   }
   updateSoundboardUnlocked();
+  // Show new game hint
+  if(isNewFile){
+    const isMobile=!document.body.classList.contains('desktop-mode');
+    const verb=isMobile?'Press':'Click';
+    setTimeout(()=>showToast(verb+' the Hi-Hat button to gain points!'),800);
+  }
   // start sequencer if tracks exist
   if(drum.seqTracks>0&&!seqPlaying)startSeq();
   // On desktop, collapse both sidebars by default on new game entry
@@ -5028,6 +5038,8 @@ const socialsModal=document.getElementById('socialsModal');
 function openSocials(){socialsModal.style.display='flex';}
 socialsBtn&&socialsBtn.addEventListener('click',openSocials);
 socialsBtn&&socialsBtn.addEventListener('touchend',e=>{e.preventDefault();openSocials();});
+const settingsSocialsBtn=document.getElementById('settingsSocialsBtn');
+settingsSocialsBtn&&settingsSocialsBtn.addEventListener('click',()=>{closeSettings();openSocials();});
 socialsModal&&socialsModal.addEventListener('click',e=>{if(e.target===socialsModal)socialsModal.style.display='none';});
 
 
