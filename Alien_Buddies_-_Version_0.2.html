@@ -558,6 +558,24 @@ body.desktop-mode .bunker-stat-label{font-size:.55rem!important;display:block!im
 .st-node.available .st-node-circle{border-color:#2255aa;animation:stPulse 2s ease-in-out infinite;}
 .st-node.locked .st-node-circle{border-color:#111;opacity:.5;}
 .st-node.placeholder .st-node-circle{border-color:#1a1a22;border-style:dashed;opacity:.35;}
+/* Node float animations — each branch offset so they don't all move in sync */
+@keyframes stFloat0{0%,100%{transform:translate(0px,0px);}25%{transform:translate(3px,-4px);}50%{transform:translate(-2px,5px);}75%{transform:translate(-4px,-2px);}}
+@keyframes stFloat1{0%,100%{transform:translate(0px,0px);}25%{transform:translate(-4px,3px);}50%{transform:translate(5px,-2px);}75%{transform:translate(2px,4px);}}
+@keyframes stFloat2{0%,100%{transform:translate(0px,0px);}25%{transform:translate(4px,4px);}50%{transform:translate(-3px,-5px);}75%{transform:translate(3px,-3px);}}
+@keyframes stFloat3{0%,100%{transform:translate(0px,0px);}25%{transform:translate(-5px,-3px);}50%{transform:translate(2px,4px);}75%{transform:translate(4px,2px);}}
+@keyframes stFloat4{0%,100%{transform:translate(0px,0px);}25%{transform:translate(3px,5px);}50%{transform:translate(-4px,2px);}75%{transform:translate(-3px,-4px);}}
+.st-node{animation:stFloat0 6s ease-in-out infinite;}
+.st-node:nth-child(3n){animation-name:stFloat1;animation-duration:7s;}
+.st-node:nth-child(3n+1){animation-name:stFloat2;animation-duration:5.5s;}
+.st-node:nth-child(4n){animation-name:stFloat3;animation-duration:8s;}
+.st-node:nth-child(5n){animation-name:stFloat4;animation-duration:6.5s;}
+.st-node.center{animation:stFloat4 9s ease-in-out infinite;}
+
+/* Silhouette nodes — one step beyond available */
+.st-node.silhouette .st-node-circle{background:#0a0a0f;border-color:#111;filter:brightness(0.15);}
+.st-node.silhouette .st-node-label{color:#111;font-size:.42rem;letter-spacing:.06em;}
+.st-node.silhouette .st-node-cost{display:none;}
+.st-node.silhouette:active{transform:none!important;}
 @keyframes stPulse{0%,100%{box-shadow:0 0 8px -3px rgba(34,85,170,.4);}50%{box-shadow:0 0 18px -2px rgba(34,85,170,.7);}}
 .st-node-label{font-family:'Bebas Neue',sans-serif;font-size:.48rem;letter-spacing:.1em;color:#333;text-align:center;max-width:76px;line-height:1.3;text-transform:uppercase;}
 .st-node.unlocked .st-node-label{color:#3a8a6a;}
@@ -5825,25 +5843,44 @@ function renderSkillTree(){
     });
   });
 
+  // Determine visibility state for each node
+  // unlocked → available → silhouette (1 step past available) → hidden
+  const availableIds = new Set(
+    SKILL_TREE_NODES.filter(n => n.id!=='core' && !unlockedSkills[n.id] && skillAvailable(n.id)).map(n=>n.id)
+  );
+  const silhouetteIds = new Set(
+    SKILL_TREE_NODES.filter(n =>
+      !unlockedSkills[n.id] && !availableIds.has(n.id) && n.id!=='core' &&
+      n.requires.some(r => availableIds.has(r) || unlockedSkills[r] || r==='core')
+    ).map(n=>n.id)
+  );
+
   // Draw nodes
   SKILL_TREE_NODES.forEach(node=>{
     const isCenter = node.id === 'core';
     const isUnlocked = isCenter || !!unlockedSkills[node.id];
-    const isAvailable = !isCenter && !isUnlocked && skillAvailable(node.id);
-    const isLocked = !isCenter && !isUnlocked && !isAvailable;
-    const isPlaceholder = node.placeholder && !isUnlocked;
+    const isAvailable = !isCenter && availableIds.has(node.id);
+    const isSilhouette = !isCenter && !isUnlocked && !isAvailable && silhouetteIds.has(node.id);
+    // Skip nodes that are too far away
+    if(!isCenter && !isUnlocked && !isAvailable && !isSilhouette) return;
 
     const el = document.createElement('div');
-    el.className = 'st-node' + (isCenter?' center':'') + (isUnlocked?' unlocked':'') + (isAvailable?' available':'') + (isLocked?' locked':'') + (isPlaceholder?' placeholder':'');
+    el.className = 'st-node' +
+      (isCenter ? ' center' : '') +
+      (isUnlocked ? ' unlocked' : '') +
+      (isAvailable ? ' available' : '') +
+      (isSilhouette ? ' silhouette' : '') +
+      (!isUnlocked && !isAvailable && !isSilhouette && !isCenter ? ' locked' : '');
     const r = isCenter ? 36 : 27;
     el.style.cssText = `left:${node.x - r}px;top:${node.y - r}px;`;
 
     const circle = document.createElement('div');
     circle.className = 'st-node-circle';
-    circle.style.borderColor = BRANCH_COLORS[node.branch] || '#333';
     if(isUnlocked) circle.style.borderColor = '#44eebb';
-    if(isLocked || isPlaceholder) circle.style.borderColor = '#111';
-    circle.textContent = node.icon;
+    else if(isSilhouette) circle.style.borderColor = '#0a0a0f';
+    else circle.style.borderColor = BRANCH_COLORS[node.branch] || '#333';
+    // Silhouette shows ? instead of icon
+    circle.textContent = isSilhouette ? '?' : node.icon;
 
     const check = document.createElement('div');
     check.className = 'st-node-check';
@@ -5852,7 +5889,8 @@ function renderSkillTree(){
 
     const label = document.createElement('div');
     label.className = 'st-node-label';
-    label.textContent = node.name;
+    // Silhouette hides name
+    label.textContent = isSilhouette ? '???' : node.name;
 
     const costEl = document.createElement('div');
     costEl.className = 'st-node-cost';
@@ -5860,10 +5898,11 @@ function renderSkillTree(){
 
     el.appendChild(circle);
     el.appendChild(label);
-    if(!isCenter) el.appendChild(costEl);
+    if(!isCenter && !isSilhouette) el.appendChild(costEl);
 
     el.addEventListener('click', e=>{
       e.stopPropagation();
+      if(isSilhouette) return; // silhouettes aren't clickable
       openStDetail(node.id, el);
     });
 
@@ -5876,9 +5915,11 @@ let _stDetailNode = null;
 function openStDetail(id, fromEl){
   const node = SKILL_MAP[id];
   if(!node) return;
-  _stDetailNode = id;
   const isUnlocked = id === 'core' || !!unlockedSkills[id];
   const isAvailable = !isUnlocked && skillAvailable(id);
+  // Don't open for silhouette/hidden nodes
+  if(!isUnlocked && !isAvailable) return;
+  _stDetailNode = id;
   const canAfford = Math.floor(alienGems) >= node.cost;
   const isPlaceholder = node.placeholder;
 
