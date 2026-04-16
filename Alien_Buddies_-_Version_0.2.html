@@ -686,7 +686,6 @@ body.desktop-mode .sb-title,
 body.desktop-mode .settings-sub,
 body.desktop-mode .pad-sub,
 body.desktop-mode .pa-desc,
-body.desktop-mode .seq-pat-name,
 body.desktop-mode .seq-arr-bar-idx,
 body.desktop-mode .upgrade-card-sub,
 body.desktop-mode .drum-card-sub,
@@ -702,6 +701,8 @@ body.desktop-mode .seq-save-pat-btn,
 body.desktop-mode .seq-hdr-btn,
 body.desktop-mode .seq-mode-pill,
 body.desktop-mode .seq-bpm-display,
+body.desktop-mode .seq-pat-name,
+body.desktop-mode .seq-arr-bar-name,
 body.desktop-mode .mp-name,
 body.desktop-mode .mp-hear,
 body.desktop-mode .pa-filter-chip,
@@ -1928,7 +1929,14 @@ function drumMultiplier(){
   const total=extraPads+drum.extraSounds+drum.seqTracks;
   return total>0?Math.pow(1.2,total):1;
 }
-function totalMultiplier(){const t=tiers.reduce((m,t,i)=>t.multiplierActive?m*tierMultValue(i):m,1);const s=shop.multLevel>=0?Math.pow(2,shop.multLevel+1):1;return t*s*alienMultiplier()*drumMultiplier()*matchingMultiplier*tipsMult;}
+function totalMultiplier(){const t=tiers.reduce((m,t,i)=>t.multiplierActive?m*tierMultValue(i):m,1);const s=shop.multLevel>=0?Math.pow(2,shop.multLevel+1):1;// Skill tree stacking multipliers
+  let _skillMult = 1;
+  if(typeof SKILL_TREE_NODES !== 'undefined' && typeof unlockedSkills !== 'undefined'){
+    SKILL_TREE_NODES.forEach(n=>{
+      if(n.mult && n.mult > 0 && unlockedSkills[n.id]) _skillMult *= n.mult;
+    });
+  }
+  return (t*s*alienMultiplier()*drumMultiplier()*matchingMultiplier*tipsMult)*_skillMult;}
 function highestActive(){let h=-1;tiers.forEach((t,i)=>{if(t.multiplierActive)h=i;});return h;}
 function autoClicksPerSec(){return shop.autoLevel<0?0:BASE_CPS*Math.pow(1.25,shop.autoLevel);}
 function autoEarningsPerSec(){return autoClicksPerSec()*totalMultiplier()*clicksPerTap();}
@@ -1938,7 +1946,11 @@ function unlockedSounds(){
   // Base sounds gated by how many pads you own (1=hihat, 2=snare, 3=kick)
   const base=['hihat','snare','kick'].slice(0,drum.pads);
   const extras=EXTRA_SOUNDS_ORDER.slice(0,drum.extraSounds);
-  return [...base,...extras];
+  // Planet sounds unlocked via skill tree
+  const planetSounds=(typeof PLANET_SOUND_DEFS!=='undefined')
+    ?PLANET_SOUND_DEFS.filter(ps=>SOUND_MAP[ps.id]&&!SOUND_MAP[ps.id].locked).map(ps=>ps.id)
+    :[];
+  return [...base,...extras,...planetSounds];
 }
 
 function loadFromSave(data){
@@ -2129,6 +2141,158 @@ const ALL_SOUNDS=[
   mkSnd('thud','THUD','drums','#ff7744','Mid-heavy punchy body hit',(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(80,t);o.frequency.exponentialRampToValueAtTime(45,t+.18);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=400;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.65*(gv??1),t+.003);g.gain.exponentialRampToValueAtTime(.001,t+.28);o.start(t);o.stop(t+.28);}),
 ];
 const SOUND_MAP={};ALL_SOUNDS.forEach(s=>SOUND_MAP[s.id]=s);
+
+
+// ══════════════════════════════════════════════
+//  PLANET SOUNDS — unlocked via skill tree
+// ══════════════════════════════════════════════
+const PLANET_SOUND_DEFS = [
+  // ── PLANET MANTRA / OM ──
+  {id:'om_bell',    name:'Om Bell',      planet:'mantra', continent:'om',    color:'#aaeecc',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=880;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.45*(gv??1),t+.004);g.gain.exponentialRampToValueAtTime(.001,t+1.8);o.start(t);o.stop(t+1.8);}},
+  {id:'om_bowl',    name:'Om Bowl',      planet:'mantra', continent:'om',    color:'#88ddbb',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(320,t);o.frequency.exponentialRampToValueAtTime(318,t+1.5);o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.4*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+2.2);o.start(t);o.stop(t+2.2);}},
+  {id:'om_rim',     name:'Om Rim',       planet:'mantra', continent:'om',    color:'#66ccaa',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=1200;const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1200;fl.Q.value=8;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3*(gv??1),t+.002);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.start(t);o.stop(t+.12);}},
+  {id:'om_shaker2', name:'Om Shaker',    planet:'mantra', continent:'om',    color:'#99ddaa',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.18);const fl=c.createBiquadFilter();fl.type='highpass';fl.frequency.value=6000;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18*(gv??1),t+.005);g.gain.exponentialRampToValueAtTime(.001,t+.18);s.start(t);s.stop(t+.18);}},
+
+  // ── PLANET MANTRA / SO HUM ──
+  {id:'sh_metalclick',name:'Metal Click', planet:'mantra', continent:'sohum', color:'#ccbbaa',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=2200;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.001);g.gain.exponentialRampToValueAtTime(.001,t+.06);o.start(t);o.stop(t+.06);}},
+  {id:'sh_tinpan',  name:'Tin Pan',      planet:'mantra', continent:'sohum', color:'#bbaacc',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(600,t);o.frequency.exponentialRampToValueAtTime(400,t+.15);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=700;fl.Q.value=3;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.35*(gv??1),t+.004);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.3);}},
+  {id:'sh_steeldrum',name:'Steel Drum',  planet:'mantra', continent:'sohum', color:'#aabbcc',
+   fn:(t,gv)=>{const c=getCtx(),car=c.createOscillator(),mod=c.createOscillator(),mg=c.createGain(),g=c.createGain();car.type='sine';car.frequency.value=370;mod.frequency.value=740;mod.connect(mg);mg.gain.value=185;mg.connect(car.frequency);car.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.003);g.gain.exponentialRampToValueAtTime(.001,t+.9);car.start(t);mod.start(t);car.stop(t+.9);mod.stop(t+.9);}},
+  {id:'sh_cymbal_lo',name:'Lo Cymbal',   planet:'mantra', continent:'sohum', color:'#998877',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.6);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=3000;fl.Q.value=0.5;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.2*(gv??1),t+.008);g.gain.exponentialRampToValueAtTime(.001,t+.6);s.start(t);s.stop(t+.6);}},
+  {id:'sh_chain',   name:'Chain',        planet:'mantra', continent:'sohum', color:'#aaaaaa',
+   fn:(t,gv)=>{const c=getCtx();for(let i=0;i<6;i++){const s=c.createBufferSource();s.buffer=noiseBuf(.04);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=2000+Math.random()*2000;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime((Math.random()*.3+.1)*(gv??1),t+i*.025);g.gain.exponentialRampToValueAtTime(.001,t+i*.025+.04);s.start(t+i*.025);s.stop(t+i*.025+.05);}}},
+
+  // ── PLANET MANTRA / MANAS ──
+  {id:'mn_bitcrush', name:'Bit Crush',   planet:'mantra', continent:'manas', color:'#88aaff',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.setValueAtTime(220,t);o.frequency.setValueAtTime(110,t+.02);o.frequency.setValueAtTime(220,t+.04);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.4*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.08);o.start(t);o.stop(t+.08);}},
+  {id:'mn_glitchperc',name:'Glitch Perc',planet:'mantra', continent:'manas', color:'#aaaaff',
+   fn:(t,gv)=>{const c=getCtx();for(let i=0;i<5;i++){if(Math.random()<.4)continue;const o=c.createOscillator();o.type='square';o.frequency.value=100+Math.random()*800;const g=c.createGain();o.connect(g);g.connect(drumMasterGain);const st=t+i*.015;g.gain.setValueAtTime((Math.random()*.4+.1)*(gv??1),st);g.gain.exponentialRampToValueAtTime(.001,st+.015);o.start(st);o.stop(st+.02);}}},
+  {id:'mn_databend', name:'Data Bend',   planet:'mantra', continent:'manas', color:'#9988ff',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sawtooth';o.frequency.setValueAtTime(440,t);o.frequency.linearRampToValueAtTime(55,t+.1);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=800;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.35*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.15);o.start(t);o.stop(t+.15);}},
+  {id:'mn_synthpop', name:'Synth Pop',   planet:'mantra', continent:'manas', color:'#bbaaff',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=880;const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.setValueAtTime(3000,t);fl.frequency.exponentialRampToValueAtTime(400,t+.08);o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.4*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.1);o.start(t);o.stop(t+.1);}},
+  {id:'mn_digitalsnare',name:'Dig.Snare',planet:'mantra', continent:'manas', color:'#7799ff',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.12);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=4000;fl.Q.value=2;const o=c.createOscillator();o.type='square';o.frequency.value=200;const og=c.createGain();const g=c.createGain();s.connect(fl);fl.connect(g);o.connect(og);og.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.35*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.12);og.gain.setValueAtTime(.2*(gv??1),t);og.gain.exponentialRampToValueAtTime(.001,t+.06);s.start(t);s.stop(t+.12);o.start(t);o.stop(t+.06);}},
+
+  // ── PLANET MANTRA / FLOWW ──
+  {id:'fw_waterdrip',name:'Water Drip',  planet:'mantra', continent:'floww', color:'#44bbff',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(1200,t);o.frequency.exponentialRampToValueAtTime(600,t+.08);o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.4*(gv??1),t+.005);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.start(t);o.stop(t+.25);}},
+  {id:'fw_marimba2', name:'Ocean Marimba',planet:'mantra',continent:'floww', color:'#55ccee',
+   fn:(t,gv)=>{const c=getCtx(),car=c.createOscillator(),mod=c.createOscillator(),mg=c.createGain(),g=c.createGain();car.type='sine';car.frequency.value=392;mod.frequency.value=392*2;mod.connect(mg);mg.gain.value=80;mg.connect(car.frequency);car.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.005);g.gain.exponentialRampToValueAtTime(.001,t+.7);car.start(t);mod.start(t);car.stop(t+.7);mod.stop(t+.7);}},
+  {id:'fw_softbass', name:'Soft Bass',   planet:'mantra', continent:'floww', color:'#3399bb',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=60;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.6*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.start(t);o.stop(t+.5);}},
+  {id:'fw_wave',     name:'Wave Crash',  planet:'mantra', continent:'floww', color:'#66bbdd',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.5);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.setValueAtTime(800,t);fl.frequency.exponentialRampToValueAtTime(200,t+.5);const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25*(gv??1),t+.1);g.gain.exponentialRampToValueAtTime(.001,t+.5);s.start(t);s.stop(t+.5);}},
+  {id:'fw_woodblock',name:'Wood Block',  planet:'mantra', continent:'floww', color:'#88bbaa',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(800,t);o.frequency.exponentialRampToValueAtTime(600,t+.04);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.002);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.start(t);o.stop(t+.12);}},
+
+  // ── PLANET HYPHAE / ENOKI ──
+  {id:'en_tinktap',  name:'Tink Tap',   planet:'hyphae', continent:'enoki', color:'#ccffcc',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=3200;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3*(gv??1),t+.001);g.gain.exponentialRampToValueAtTime(.001,t+.08);o.start(t);o.stop(t+.08);}},
+  {id:'en_woodtap',  name:'Wood Tap',   planet:'hyphae', continent:'enoki', color:'#aaddaa',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=1800;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.25*(gv??1),t+.002);g.gain.exponentialRampToValueAtTime(.001,t+.1);o.start(t);o.stop(t+.1);}},
+  {id:'en_highping', name:'High Ping',  planet:'hyphae', continent:'enoki', color:'#eeffee',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=4400;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.2*(gv??1),t+.001);g.gain.exponentialRampToValueAtTime(.001,t+.12);o.start(t);o.stop(t+.12);}},
+  {id:'en_lightrim', name:'Light Rim',  planet:'hyphae', continent:'enoki', color:'#bbeecc',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.value=2000;const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=2200;fl.Q.value=10;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.2*(gv??1),t+.001);g.gain.exponentialRampToValueAtTime(.001,t+.07);o.start(t);o.stop(t+.07);}},
+  {id:'en_softclick',name:'Soft Click', planet:'hyphae', continent:'enoki', color:'#99cc99',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.02);const fl=c.createBiquadFilter();fl.type='highpass';fl.frequency.value=8000;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.15*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.02);s.start(t);s.stop(t+.02);}},
+
+  // ── PLANET HYPHAE / MOREL ──
+  {id:'mo_earththud',name:'Earth Thud',  planet:'hyphae', continent:'morel', color:'#886644',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(80,t);o.frequency.exponentialRampToValueAtTime(40,t+.15);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.7*(gv??1),t+.005);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start(t);o.stop(t+.35);}},
+  {id:'mo_hollowboom',name:'Hollow Boom',planet:'hyphae', continent:'morel', color:'#774433',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(55,t);o.frequency.exponentialRampToValueAtTime(30,t+.3);o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.65*(gv??1),t+.008);g.gain.exponentialRampToValueAtTime(.001,t+.5);o.start(t);o.stop(t+.5);}},
+  {id:'mo_deepmud',  name:'Deep Mud',   planet:'hyphae', continent:'morel', color:'#665533',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.2);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=300;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+.2);s.start(t);s.stop(t+.2);}},
+  {id:'mo_lowknock', name:'Low Knock',  planet:'hyphae', continent:'morel', color:'#997755',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(60,t+.1);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.55*(gv??1),t+.004);g.gain.exponentialRampToValueAtTime(.001,t+.22);o.start(t);o.stop(t+.22);}},
+  {id:'mo_caveboom', name:'Cave Boom',  planet:'hyphae', continent:'morel', color:'#553322',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=45;o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.6*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+.8);o.start(t);o.stop(t+.8);}},
+
+  // ── PLANET HYPHAE / PORCINI ──
+  {id:'po_woodmid',  name:'Wood Mid',   planet:'hyphae', continent:'porcini',color:'#bb8855',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(400,t);o.frequency.exponentialRampToValueAtTime(250,t+.12);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.003);g.gain.exponentialRampToValueAtTime(.001,t+.28);o.start(t);o.stop(t+.28);}},
+  {id:'po_roundbonk',name:'Round Bonk', planet:'hyphae', continent:'porcini',color:'#cc9966',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(350,t);o.frequency.exponentialRampToValueAtTime(200,t+.18);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.55*(gv??1),t+.004);g.gain.exponentialRampToValueAtTime(.001,t+.32);o.start(t);o.stop(t+.32);}},
+  {id:'po_treeknock',name:'Tree Knock', planet:'hyphae', continent:'porcini',color:'#aa7744',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(180,t+.1);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.45*(gv??1),t+.003);g.gain.exponentialRampToValueAtTime(.001,t+.2);o.start(t);o.stop(t+.2);}},
+  {id:'po_stump',    name:'Stump Hit',  planet:'hyphae', continent:'porcini',color:'#996633',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(200,t);o.frequency.exponentialRampToValueAtTime(100,t+.2);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.6*(gv??1),t+.005);g.gain.exponentialRampToValueAtTime(.001,t+.38);o.start(t);o.stop(t+.38);}},
+  {id:'po_logdrum',  name:'Log Drum',   planet:'hyphae', continent:'porcini',color:'#dd9955',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=280;const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=600;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.003);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.3);}},
+
+  // ── PLANET HYPHAE / OYSTER ──
+  {id:'oy_breathslide',name:'Breath Slide',planet:'hyphae',continent:'oyster',color:'#aaddff',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.25);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.setValueAtTime(800,t);fl.frequency.exponentialRampToValueAtTime(400,t+.25);fl.Q.value=2;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22*(gv??1),t+.03);g.gain.exponentialRampToValueAtTime(.001,t+.25);s.start(t);s.stop(t+.25);}},
+  {id:'oy_airblow',  name:'Air Blow',   planet:'hyphae', continent:'oyster', color:'#bbeeff',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.3);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1200;fl.Q.value=1.5;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18*(gv??1),t+.05);g.gain.setValueAtTime(.18*(gv??1),t+.2);g.gain.exponentialRampToValueAtTime(.001,t+.3);s.start(t);s.stop(t+.3);}},
+  {id:'oy_wetslap',  name:'Wet Slap',   planet:'hyphae', continent:'oyster', color:'#88bbdd',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.08);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=2000;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.4*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.08);s.start(t);s.stop(t+.08);}},
+  {id:'oy_softbend', name:'Soft Bend',  planet:'hyphae', continent:'oyster', color:'#99ccee',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(660,t);o.frequency.exponentialRampToValueAtTime(440,t+.2);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.start(t);o.stop(t+.4);}},
+  {id:'oy_shimmer',  name:'Shimmer',    planet:'hyphae', continent:'oyster', color:'#ddeeff',
+   fn:(t,gv)=>{const c=getCtx();[4000,6000,8000].forEach(f=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.12*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.3)});}},
+
+  // ── PLANET HYPHAE / REISHI ──
+  {id:'re_gong',     name:'Gong',       planet:'hyphae', continent:'reishi', color:'#ddbb88',
+   fn:(t,gv)=>{const c=getCtx(),car=c.createOscillator(),mod=c.createOscillator(),mg=c.createGain(),g=c.createGain();car.type='sine';car.frequency.value=180;mod.frequency.value=181;mod.connect(mg);mg.gain.value=90;mg.connect(car.frequency);car.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.6*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+2.5);car.start(t);mod.start(t);car.stop(t+2.5);mod.stop(t+2.5);}},
+  {id:'re_deepdrone',name:'Deep Drone', planet:'hyphae', continent:'reishi', color:'#cc9966',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=55;o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.4*(gv??1),t+.05);g.gain.setValueAtTime(.4*(gv??1),t+.5);g.gain.exponentialRampToValueAtTime(.001,t+1.5);o.start(t);o.stop(t+1.5);}},
+  {id:'re_ceremony', name:'Ceremony',   planet:'hyphae', continent:'reishi', color:'#eebb77',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=240;const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=800;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.45*(gv??1),t+.02);g.gain.exponentialRampToValueAtTime(.001,t+1.2);o.start(t);o.stop(t+1.2);}},
+  {id:'re_lowbowl',  name:'Low Bowl',   planet:'hyphae', continent:'reishi', color:'#bbaa77',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(158,t+2);o.connect(g);g.connect(drumMasterGain);g.connect(rvbNode);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.015);g.gain.exponentialRampToValueAtTime(.001,t+2.8);o.start(t);o.stop(t+2.8);}},
+  {id:'re_resonance',name:'Resonance',  planet:'hyphae', continent:'reishi', color:'#ffeeaa',
+   fn:(t,gv)=>{const c=getCtx();[220,330,440].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.18*(gv??1),t+.01);g.gain.exponentialRampToValueAtTime(.001,t+1.5+i*.3);o.start(t);o.stop(t+1.8+i*.3)});}},
+
+  // ── PLANET HYPHAE / BELLA ──
+  {id:'be_snap',     name:'Snap',       planet:'hyphae', continent:'bella',  color:'#ffeeaa',
+   fn:(t,gv)=>{const c=getCtx(),s=c.createBufferSource();s.buffer=noiseBuf(.015);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=5000;fl.Q.value=5;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.5*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.015);s.start(t);s.stop(t+.015);}},
+  {id:'be_woodsnap', name:'Wood Snap',  planet:'hyphae', continent:'bella',  color:'#eeddaa',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(1200,t);o.frequency.exponentialRampToValueAtTime(600,t+.03);o.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.5*(gv??1),t+.001);g.gain.exponentialRampToValueAtTime(.001,t+.06);o.start(t);o.stop(t+.06);}},
+  {id:'be_brightpop',name:'Bright Pop', planet:'hyphae', continent:'bella',  color:'#ffffbb',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='square';o.frequency.setValueAtTime(1000,t);o.frequency.exponentialRampToValueAtTime(500,t+.04);const fl=c.createBiquadFilter();fl.type='lowpass';fl.frequency.value=2000;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(.4*(gv??1),t);g.gain.exponentialRampToValueAtTime(.001,t+.07);o.start(t);o.stop(t+.07);}},
+  {id:'be_crackle',  name:'Crackle',    planet:'hyphae', continent:'bella',  color:'#ffddaa',
+   fn:(t,gv)=>{const c=getCtx();for(let i=0;i<4;i++){const s=c.createBufferSource();s.buffer=noiseBuf(.012);const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=3000+Math.random()*2000;const g=c.createGain();s.connect(fl);fl.connect(g);g.connect(drumMasterGain);const st=t+i*.018;g.gain.setValueAtTime(.35*(gv??1),st);g.gain.exponentialRampToValueAtTime(.001,st+.012);s.start(st);s.stop(st+.015);}}},
+  {id:'be_accent',   name:'Accent',     planet:'hyphae', continent:'bella',  color:'#ffcc88',
+   fn:(t,gv)=>{const c=getCtx(),o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=900;const fl=c.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1000;fl.Q.value=4;o.connect(fl);fl.connect(g);g.connect(drumMasterGain);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.45*(gv??1),t+.002);g.gain.exponentialRampToValueAtTime(.001,t+.09);o.start(t);o.stop(t+.09);}},
+];
+
+// Register planet sounds into ALL_SOUNDS and SOUND_MAP
+function registerPlanetSounds(){
+  PLANET_SOUND_DEFS.forEach(ps=>{
+    if(SOUND_MAP[ps.id]) return; // already registered
+    const entry = {
+      id: ps.id,
+      name: ps.name,
+      tag: ps.planet + '/' + ps.continent,
+      color: ps.color,
+      planet: ps.planet,
+      continent: ps.continent,
+      fn: ps.fn,
+      locked: true // locked until skill tree unlock
+    };
+    ALL_SOUNDS.push(entry);
+    SOUND_MAP[ps.id] = entry;
+  });
+}
+
+// Unlock a planet sound (called when skill node is bought)
+function unlockPlanetSound(soundId){
+  if(SOUND_MAP[soundId]){
+    SOUND_MAP[soundId].locked = false;
+    updateSoundboardUnlocked();
+  }
+}
+
 const TAGS=[...new Set(ALL_SOUNDS.map(s=>s.tag))];
 
 function playSound(id,velMult){
@@ -2395,21 +2559,41 @@ const padAssignFiltersEl=document.getElementById('padAssignFilters');
 const padAssignListEl=document.getElementById('padAssignList');
 const padAssignClose=document.getElementById('padAssignClose');
 
-// Build filter chips
-const paAllChip=document.createElement('div');paAllChip.className='pa-filter-chip on';paAllChip.textContent='ALL';
-paAllChip.addEventListener('click',()=>setPaFilter('all'));padAssignFiltersEl.appendChild(paAllChip);
-TAGS.forEach(tag=>{const ch=document.createElement('div');ch.className='pa-filter-chip';ch.textContent=tag.toUpperCase();ch.dataset.tag=tag;ch.addEventListener('click',()=>setPaFilter(tag));padAssignFiltersEl.appendChild(ch);});
+// Filters are rebuilt dynamically when picker opens (see buildPaFilters)
+function buildPaFilters(){
+  padAssignFiltersEl.innerHTML='';
+  const avail=unlockedSounds().map(id=>SOUND_MAP[id]).filter(Boolean);
+  // ALL chip
+  const allChip=document.createElement('div');allChip.className='pa-filter-chip'+(paFilter==='all'?' on':'');allChip.textContent='ALL';
+  allChip.addEventListener('click',()=>setPaFilter('all'));padAssignFiltersEl.appendChild(allChip);
+  // Tucana Core (original sounds)
+  const hasTucana=avail.some(s=>!s.planet);
+  if(hasTucana){const ch=document.createElement('div');ch.className='pa-filter-chip'+(paFilter==='tucana'?' on':'');ch.textContent='🌌 TUCANA';ch.dataset.tag='tucana';ch.addEventListener('click',()=>setPaFilter('tucana'));padAssignFiltersEl.appendChild(ch);}
+  // Planet filters
+  const planets=[...new Set(avail.filter(s=>s.planet).map(s=>s.planet))];
+  planets.forEach(p=>{const ch=document.createElement('div');ch.className='pa-filter-chip'+(paFilter===p?' on':'');ch.style.borderColor='#44eebb44';ch.textContent='🪐 '+p.toUpperCase();ch.dataset.tag=p;ch.addEventListener('click',()=>setPaFilter(p));padAssignFiltersEl.appendChild(ch);});
+  // Continent filters for current planet filter
+  if(paFilter!=='all'&&paFilter!=='tucana'&&planets.includes(paFilter)){
+    const conts=[...new Set(avail.filter(s=>s.planet===paFilter).map(s=>s.continent))];
+    conts.forEach(c=>{const ch=document.createElement('div');ch.className='pa-filter-chip'+(paFilter===c?' on':'');ch.style.borderColor='#44eebb22';ch.textContent='  ↳ '+c.toUpperCase();ch.dataset.tag=c;ch.addEventListener('click',()=>setPaFilter(c));padAssignFiltersEl.appendChild(ch);});
+  }
+  // Original tag filters (drums, synth etc)
+  const tags=[...new Set(avail.filter(s=>!s.planet).map(s=>s.tag))];
+  tags.forEach(tag=>{const ch=document.createElement('div');ch.className='pa-filter-chip'+(paFilter===tag?' on':'');ch.textContent=tag.toUpperCase();ch.dataset.tag=tag;ch.addEventListener('click',()=>setPaFilter(tag));padAssignFiltersEl.appendChild(ch);});
+}
 
 function setPaFilter(tag){
   paFilter=tag;
-  padAssignFiltersEl.querySelectorAll('.pa-filter-chip').forEach(c=>c.classList.toggle('on',c.dataset.tag===tag||(tag==='all'&&!c.dataset.tag)));
+  buildPaFilters();
   buildPaList();
 }
 
 function buildPaList(){
   padAssignListEl.innerHTML='';
   const avail=unlockedSounds().map(id=>SOUND_MAP[id]).filter(Boolean);
-  const shown=paFilter==='all'?avail:avail.filter(s=>s.tag===paFilter);
+  const shown=paFilter==='all'?avail:
+    paFilter==='tucana'?avail.filter(s=>!s.planet):
+    avail.filter(s=>s.planet===paFilter||s.continent===paFilter||s.tag===paFilter);
   shown.forEach(snd=>{
     if(soundVols[snd.id]===undefined)soundVols[snd.id]=1;
     const currentSnd=padAssignIdx!==null?padSounds[padAssignIdx]:null;
@@ -2589,7 +2773,12 @@ function firePad(idx){
   const el=padEls[idx];
   el.classList.remove('lit');void el.offsetWidth;el.classList.add('lit');
   setTimeout(()=>el.classList.remove('lit'),130);
-  doTap({x:window.innerWidth/2,y:window.innerHeight/2});
+  // Use the pad element's position so particles spawn from the pad
+  const _padEl=padEls[idx];
+  const _padPos=_padEl?_padEl.getBoundingClientRect():null;
+  const _px=_padPos?_padPos.left+_padPos.width/2:window.innerWidth/2;
+  const _py=_padPos?_padPos.top+_padPos.height/2:window.innerHeight/2;
+  doTap({x:_px,y:_py});
 }
 
 // ══════════════════════════════════════════════
@@ -4102,6 +4291,7 @@ function startGame(slotIndex){
   _adaptiveFPSActive=true;
   updateFullscreenBtnVisibility();
   buildBunkerGrid();buildIncubatorGrid();updateIncubatorVisibility();renderUI();
+  registerPlanetSounds();
   startGemInterval();
   if(!ambStarted)startAmbience();
   // Restore BG music preference
@@ -4851,13 +5041,18 @@ function doTap(coords){
   requestRender(anims[anims.length-1]);
   const h=highestActive();
   if(!coords.silent||coords.seq){
-    // Try drum tracker first, then pad area, then tap coords
-    const drumPos=getElCenter('tiersContainer')||getElCenter('padGrid');
-    const px=drumPos?drumPos.x:(coords.x||window.innerWidth/2);
-    const py=drumPos?drumPos.y:(coords.y||window.innerHeight/2);
-    if(!coords.silent||(coords.seq&&drumPos)){
-      spawnParticle(px,py,`+${formatNum(mult*cpt*(coords.seqVel||1))}`,color(Math.max(0,h)).hex);
+    let px, py;
+    if(coords.seq){
+      // Seq: target drum tracker, fallback to manualTiersCol
+      const drumPos=getElCenter('tiersContainer')||getElCenter('manualTiersCol');
+      px=drumPos?drumPos.x:(coords.x||window.innerWidth/2);
+      py=drumPos?drumPos.y:(coords.y||window.innerHeight/2);
+    } else {
+      // Manual tap: use actual tap coords (pad position)
+      px=coords.x||window.innerWidth/2;
+      py=coords.y||window.innerHeight/2;
     }
+    spawnParticle(px,py,`+${formatNum(mult*cpt*(coords.seqVel||1))}`,color(Math.max(0,h)).hex);
   }
 }
 function getElCenter(id){
@@ -4877,7 +5072,7 @@ function doAutoTap(){
   _autoParticleAccum+=ratio;
   if(_autoParticleAccum>=1){
     _autoParticleAccum-=1;
-    const pos=getElCenter('autoTiersContainer')||getElCenter('autoTiersCol');
+    const pos=getElCenter('autoTiersContainer')||getElCenter('autoTiersCol')||getElCenter('tiersContainer')||getElCenter('manualTiersCol');
     if(pos){const h=highestActive();spawnParticle(pos.x,pos.y,`+${formatNum(mult*cpt)}`,color(Math.max(0,h)).hex);}
   }
   requestRender(anims[anims.length-1]);
@@ -5638,35 +5833,133 @@ const BASE_GEMS_PER_ALIEN_PER_MIN = 1;
 // Layout: center at (0,0), branches go diagonally
 // Each node: {id, icon, name, desc, cost, requires, x, y, branch, placeholder}
 const SKILL_TREE_NODES = [
-  // CENTER
-  {id:'core', icon:'✦', name:'Tucana Core', desc:'The heart of the Tucana Galaxy. All skill paths begin here.', cost:0, requires:[], x:0, y:0, branch:'center'},
+  // ── CENTER ──
+  {id:'core', icon:'✦', name:'Tucana Core', desc:'The heart of the Tucana Galaxy. All four Quad Sun paths begin here.', cost:0, requires:[], x:0, y:0, branch:'center', mult:0},
 
-  // ── BRANCH 1 (↖): PLANET ATLAS ──
-  {id:'planet_hyphae', icon:'🪐', name:'Planet Hyphae', desc:'Establishes contact with Planet Hyphae. Unlocks SYNTH sound category for your drum pads.', cost:5, requires:['core'], x:-160, y:-160, branch:'planets'},
-  {id:'hyphae_resonance', icon:'🎸', name:'Hyphae Resonance', desc:'Amplifies Hyphae frequencies. Unlocks BASS sound category for your drum pads.', cost:12, requires:['planet_hyphae'], x:-280, y:-280, branch:'planets'},
-  {id:'planet_vorrn', icon:'🌑', name:'Planet Vorrn', desc:'Dark matter signals from Planet Vorrn. Unlocks PERC sound category for your drum pads.', cost:20, requires:['hyphae_resonance'], x:-400, y:-320, branch:'planets'},
-  {id:'vorrn_crystals', icon:'🔮', name:'Vorrn Crystals', desc:'Crystalline resonators from the Vorrn caves. Unlocks FX sound category for your drum pads.', cost:35, requires:['planet_vorrn'], x:-480, y:-440, branch:'planets'},
-  {id:'deep_space_signal', icon:'🌌', name:'Deep Space Signal', desc:'A signal from the far reaches of the Tucana Galaxy. Unlocks all remaining sound categories.', cost:60, requires:['vorrn_crystals'], x:-560, y:-560, branch:'planets'},
+  // ── QUAD SUN 1 — Planet Exploration (↖) ──
+  {id:'sun_planets', icon:'☀', name:'Quad Sun I', desc:'The first of four Quad Suns. Opens the Planet Exploration path. Grants ×2 points.', cost:150, requires:['core'], x:-200, y:-200, branch:'planets', mult:2},
 
-  // ── BRANCH 2 (↗): POINT AMPLIFIER ──
-  {id:'neural_tap_1', icon:'⚡', name:'Neural Tap I', desc:'Boosts base click value. Each tap is now worth 1.5× more points.', cost:8, requires:['core'], x:160, y:-160, branch:'points'},
-  {id:'neural_tap_2', icon:'⚡', name:'Neural Tap II', desc:'Deeper neural calibration. Base click value increased to 2×.', cost:20, requires:['neural_tap_1'], x:280, y:-280, branch:'points'},
-  {id:'synaptic_chain', icon:'🧠', name:'Synaptic Chain', desc:'Every 5th click fires a chain reaction worth 5× points.', cost:30, requires:['neural_tap_2'], x:400, y:-320, branch:'points'},
-  {id:'quantum_strike', icon:'💥', name:'Quantum Strike', desc:'Quantum-entangled auto-clicker. Auto-click speed increased by 50%.', cost:50, requires:['synaptic_chain'], x:480, y:-440, branch:'points'},
-  {id:'singularity', icon:'🌟', name:'Singularity', desc:'The Tucana singularity opens. All point sources permanently ×2.', cost:100, requires:['quantum_strike'], x:560, y:-560, branch:'points'},
+  // Planet Mantra
+  {id:'planet_mantra', icon:'🌍', name:'Planet Mantra', desc:'First contact with Planet Mantra. Unlocks the Om continent and standard sounds. Grants ×1.5 points.', cost:300, requires:['sun_planets'], x:-340, y:-300, branch:'planets', mult:1.5},
+  // Mantra continents
+  {id:'cont_om', icon:'🔔', name:'Continent: Om', desc:'The spiritual heartland of Mantra. Enriches the standard drum kit with 4 new sounds. ×1.5 points.', cost:200, requires:['planet_mantra'], x:-420, y:-200, branch:'planets', mult:1.5,
+    sounds:['om_bell','om_bowl','om_rim','om_shaker2']},
+  {id:'cont_sohum', icon:'🥁', name:'Continent: So Hum', desc:'Lofi metallic instruments from the ancient forges of So Hum. 5 new sounds. ×1.5 points.', cost:200, requires:['planet_mantra'], x:-480, y:-320, branch:'planets', mult:1.5,
+    sounds:['sh_metalclick','sh_tinpan','sh_steeldrum','sh_cymbal_lo','sh_chain']},
+  {id:'cont_manas', icon:'🌀', name:'Continent: Manas', desc:'Abstract electronic pulses from the digital wastes of Manas. 5 new sounds. ×1.5 points.', cost:200, requires:['planet_mantra'], x:-520, y:-180, branch:'planets', mult:1.5,
+    sounds:['mn_bitcrush','mn_glitchperc','mn_databend','mn_synthpop','mn_digitalsnare']},
+  {id:'cont_floww', icon:'💧', name:'Continent: Floww', desc:'Water, marimba and soft bass from the ocean plains of Floww. 5 new sounds. ×1.5 points.', cost:200, requires:['planet_mantra'], x:-440, y:-430, branch:'planets', mult:1.5,
+    sounds:['fw_waterdrip','fw_marimba2','fw_softbass','fw_wave','fw_woodblock']},
 
-  // ── BRANCH 3 (↙): MINIGAME NEXUS ──
-  {id:'memory_boost', icon:'🃏', name:'Memory Boost', desc:'Enhances cognitive resonance. Adds 2 extra levels to the Matching Game.', cost:10, requires:['core'], x:-160, y:160, branch:'minigames', placeholder:true},
-  {id:'alien_target', icon:'🎯', name:'Alien Target', desc:'Coming soon — a new tap-target minigame will be unlocked.', cost:25, requires:['memory_boost'], x:-280, y:280, branch:'minigames', placeholder:true},
-  {id:'chaos_mode', icon:'🎲', name:'Chaos Mode', desc:'Coming soon — unlocks a random bonus event minigame.', cost:40, requires:['alien_target'], x:-400, y:320, branch:'minigames', placeholder:true},
-  {id:'grand_tournament', icon:'🏆', name:'Grand Tournament', desc:'Coming soon — unlocks a weekly challenge mode.', cost:75, requires:['chaos_mode'], x:-480, y:440, branch:'minigames', placeholder:true},
+  // Sound nodes for Om
+  {id:'snd_om_bell', icon:'🔔', name:'Om Bell', desc:'A pure resonant bell tone from the Om temples. ×1.5 points.', cost:50, requires:['cont_om'], x:-520, y:-120, branch:'planets', mult:1.5, soundUnlock:'om_bell'},
+  {id:'snd_om_bowl', icon:'🎵', name:'Om Bowl', desc:'A singing bowl strike with long harmonic decay. ×1.5 points.', cost:50, requires:['cont_om'], x:-580, y:-170, branch:'planets', mult:1.5, soundUnlock:'om_bowl'},
+  {id:'snd_om_rim', icon:'🥁', name:'Om Rim', desc:'A crisp rim knock on a ceremonial drum. ×1.5 points.', cost:50, requires:['cont_om'], x:-560, y:-60, branch:'planets', mult:1.5, soundUnlock:'om_rim'},
+  {id:'snd_om_shaker2', icon:'🎶', name:'Om Shaker', desc:'A soft organic shaker from Om rituals. ×1.5 points.', cost:50, requires:['cont_om'], x:-630, y:-100, branch:'planets', mult:1.5, soundUnlock:'om_shaker2'},
 
-  // ── BRANCH 4 (↘): ALIEN EVOLUTION ──
-  {id:'gem_harvester_1', icon:'💎', name:'Gem Harvester I', desc:'Optimizes alien gem output. Gem rate increased to 1.5× per alien per minute.', cost:15, requires:['core'], x:160, y:160, branch:'aliens'},
-  {id:'gem_harvester_2', icon:'💎', name:'Gem Harvester II', desc:'Further gem optimization. Gem rate increased to 2× per alien per minute.', cost:30, requires:['gem_harvester_1'], x:280, y:280, branch:'aliens'},
-  {id:'alien_awakening', icon:'👽', name:'Alien Awakening', desc:'Your alien buddies awaken to higher consciousness. Bouncers glow and leave energy trails.', cost:25, requires:['gem_harvester_1'], x:360, y:200, branch:'aliens'},
-  {id:'dna_splice', icon:'🧬', name:'DNA Splice', desc:'Aliens develop autonomous behavior. Occasionally double-tap automatically for bonus points.', cost:45, requires:['alien_awakening'], x:480, y:320, branch:'aliens'},
-  {id:'ascension', icon:'🌠', name:'Ascension', desc:'Your aliens ascend to a higher plane. All alien effects ×3 and your egg begins to incubate.', cost:80, requires:['dna_splice'], x:560, y:440, branch:'aliens'},
+  // Sound nodes for So Hum
+  {id:'snd_sh_metalclick', icon:'⚙', name:'Metal Click', desc:'A sharp metallic click from So Hum forges. ×1.5 points.', cost:50, requires:['cont_sohum'], x:-570, y:-390, branch:'planets', mult:1.5, soundUnlock:'sh_metalclick'},
+  {id:'snd_sh_tinpan', icon:'🥫', name:'Tin Pan', desc:'A hollow tin pan strike with buzzy overtones. ×1.5 points.', cost:50, requires:['cont_sohum'], x:-630, y:-340, branch:'planets', mult:1.5, soundUnlock:'sh_tinpan'},
+  {id:'snd_sh_steeldrum', icon:'🎺', name:'Steel Drum', desc:'A warm steel drum tone from the So Hum markets. ×1.5 points.', cost:50, requires:['cont_sohum'], x:-680, y:-280, branch:'planets', mult:1.5, soundUnlock:'sh_steeldrum'},
+  {id:'snd_sh_cymbal_lo', icon:'💿', name:'Lo Cymbal', desc:'A dark low cymbal wash, lofi and dusty. ×1.5 points.', cost:50, requires:['cont_sohum'], x:-660, y:-420, branch:'planets', mult:1.5, soundUnlock:'sh_cymbal_lo'},
+  {id:'snd_sh_chain', icon:'⛓', name:'Chain Rattle', desc:'A metallic chain rattle with industrial character. ×1.5 points.', cost:50, requires:['cont_sohum'], x:-720, y:-360, branch:'planets', mult:1.5, soundUnlock:'sh_chain'},
+
+  // Sound nodes for Manas
+  {id:'snd_mn_bitcrush', icon:'💾', name:'Bit Crush', desc:'An 8-bit crunchy percussive hit. ×1.5 points.', cost:50, requires:['cont_manas'], x:-620, y:-140, branch:'planets', mult:1.5, soundUnlock:'mn_bitcrush'},
+  {id:'snd_mn_glitchperc', icon:'📡', name:'Glitch Perc', desc:'A fragmented digital percussion burst. ×1.5 points.', cost:50, requires:['cont_manas'], x:-680, y:-190, branch:'planets', mult:1.5, soundUnlock:'mn_glitchperc'},
+  {id:'snd_mn_databend', icon:'🖥', name:'Data Bend', desc:'A data-corrupted tone with alien texture. ×1.5 points.', cost:50, requires:['cont_manas'], x:-700, y:-110, branch:'planets', mult:1.5, soundUnlock:'mn_databend'},
+  {id:'snd_mn_synthpop', icon:'🎹', name:'Synth Pop', desc:'A bright synthetic pop with punchy attack. ×1.5 points.', cost:50, requires:['cont_manas'], x:-650, y:-50, branch:'planets', mult:1.5, soundUnlock:'mn_synthpop'},
+  {id:'snd_mn_digitalsnare', icon:'📟', name:'Digital Snare', desc:'A lo-fi digital snare crack. ×1.5 points.', cost:50, requires:['cont_manas'], x:-750, y:-160, branch:'planets', mult:1.5, soundUnlock:'mn_digitalsnare'},
+
+  // Sound nodes for Floww
+  {id:'snd_fw_waterdrip', icon:'💦', name:'Water Drip', desc:'A single water droplet with crystalline resonance. ×1.5 points.', cost:50, requires:['cont_floww'], x:-530, y:-510, branch:'planets', mult:1.5, soundUnlock:'fw_waterdrip'},
+  {id:'snd_fw_marimba2', icon:'🪘', name:'Ocean Marimba', desc:'A soft watery marimba tone. ×1.5 points.', cost:50, requires:['cont_floww'], x:-590, y:-470, branch:'planets', mult:1.5, soundUnlock:'fw_marimba2'},
+  {id:'snd_fw_softbass', icon:'🐋', name:'Soft Bass', desc:'A warm rounded bass note from deep Floww waters. ×1.5 points.', cost:50, requires:['cont_floww'], x:-650, y:-510, branch:'planets', mult:1.5, soundUnlock:'fw_softbass'},
+  {id:'snd_fw_wave', icon:'🌊', name:'Wave Crash', desc:'A gentle wave crash with white noise tail. ×1.5 points.', cost:50, requires:['cont_floww'], x:-470, y:-550, branch:'planets', mult:1.5, soundUnlock:'fw_wave'},
+  {id:'snd_fw_woodblock', icon:'🪵', name:'Wood Block', desc:'A hollow wooden block strike with warm tone. ×1.5 points.', cost:50, requires:['cont_floww'], x:-540, y:-570, branch:'planets', mult:1.5, soundUnlock:'fw_woodblock'},
+
+  // Planet Hyphae (branches from Mantra)
+  {id:'planet_hyphae', icon:'🍄', name:'Planet Hyphae', desc:'A mushroom-covered world of organic textures. Unlocks 6 continents of fungal sound. ×1.5 points.', cost:500, requires:['planet_mantra'], x:-600, y:-380, branch:'planets', mult:1.5},
+  // Hyphae continents
+  {id:'cont_enoki', icon:'🌿', name:'Continent: Enoki', desc:'Thin, high metallic taps and light woody clicks. Delicate and sparse. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-700, y:-460, branch:'planets', mult:1.5,
+    sounds:['en_tinktap','en_woodtap','en_highping','en_lightrim','en_softclick']},
+  {id:'cont_morel', icon:'🌑', name:'Continent: Morel', desc:'Deep hollow thuds and earthy low tones. Warm and organic. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-760, y:-420, branch:'planets', mult:1.5,
+    sounds:['mo_earththud','mo_hollowboom','mo_deepmud','mo_lowknock','mo_caveboom']},
+  {id:'cont_porcini', icon:'🟤', name:'Continent: Porcini', desc:'Rich mid-range woody percussion. Full-bodied and round. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-820, y:-380, branch:'planets', mult:1.5,
+    sounds:['po_woodmid','po_roundbonk','po_treeknock','po_stump','po_logdrum']},
+  {id:'cont_oyster', icon:'🦪', name:'Continent: Oyster', desc:'Smooth sliding tones and breathy textures. Airy and wet. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-680, y:-540, branch:'planets', mult:1.5,
+    sounds:['oy_breathslide','oy_airblow','oy_wetslap','oy_softbend','oy_shimmer']},
+  {id:'cont_reishi', icon:'🪬', name:'Continent: Reishi', desc:'Slow ceremonial gongs and deep drones. Meditative and long decay. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-780, y:-500, branch:'planets', mult:1.5,
+    sounds:['re_gong','re_deepdrone','re_ceremony','re_lowbowl','re_resonance']},
+  {id:'cont_bella', icon:'✨', name:'Continent: Bella', desc:'Bright snappy accents and quick woody snaps. Punchy and lively. 5 sounds. ×1.5 points.', cost:300, requires:['planet_hyphae'], x:-860, y:-460, branch:'planets', mult:1.5,
+    sounds:['be_snap','be_woodsnap','be_brightpop','be_crackle','be_accent']},
+
+  // Hyphae sound nodes (just a few representative ones — full set below)
+  {id:'snd_en_tinktap', icon:'🌿', name:'Tink Tap', desc:'A delicate high metallic tap. ×1.5 points.', cost:80, requires:['cont_enoki'], x:-760, y:-540, branch:'planets', mult:1.5, soundUnlock:'en_tinktap'},
+  {id:'snd_en_woodtap', icon:'🌿', name:'Wood Tap', desc:'A light woody click from Enoki forests. ×1.5 points.', cost:80, requires:['cont_enoki'], x:-820, y:-560, branch:'planets', mult:1.5, soundUnlock:'en_woodtap'},
+  {id:'snd_en_highping', icon:'🌿', name:'High Ping', desc:'A bright metallic ping with quick decay. ×1.5 points.', cost:80, requires:['cont_enoki'], x:-700, y:-590, branch:'planets', mult:1.5, soundUnlock:'en_highping'},
+  {id:'snd_en_lightrim', icon:'🌿', name:'Light Rim', desc:'A feather-light rim tap. ×1.5 points.', cost:80, requires:['cont_enoki'], x:-860, y:-520, branch:'planets', mult:1.5, soundUnlock:'en_lightrim'},
+  {id:'snd_en_softclick', icon:'🌿', name:'Soft Click', desc:'A barely-there soft click. ×1.5 points.', cost:80, requires:['cont_enoki'], x:-780, y:-600, branch:'planets', mult:1.5, soundUnlock:'en_softclick'},
+
+  {id:'snd_mo_earththud', icon:'🌑', name:'Earth Thud', desc:'A deep hollow earth thud. ×1.5 points.', cost:80, requires:['cont_morel'], x:-840, y:-460, branch:'planets', mult:1.5, soundUnlock:'mo_earththud'},
+  {id:'snd_mo_hollowboom', icon:'🌑', name:'Hollow Boom', desc:'A cavernous boom from deep Morel earth. ×1.5 points.', cost:80, requires:['cont_morel'], x:-900, y:-440, branch:'planets', mult:1.5, soundUnlock:'mo_hollowboom'},
+  {id:'snd_mo_deepmud', icon:'🌑', name:'Deep Mud', desc:'A thick low muddy thud. ×1.5 points.', cost:80, requires:['cont_morel'], x:-880, y:-390, branch:'planets', mult:1.5, soundUnlock:'mo_deepmud'},
+  {id:'snd_mo_lowknock', icon:'🌑', name:'Low Knock', desc:'A heavy low wood knock. ×1.5 points.', cost:80, requires:['cont_morel'], x:-940, y:-420, branch:'planets', mult:1.5, soundUnlock:'mo_lowknock'},
+  {id:'snd_mo_caveboom', icon:'🌑', name:'Cave Boom', desc:'A resonant cave boom with long decay. ×1.5 points.', cost:80, requires:['cont_morel'], x:-860, y:-500, branch:'planets', mult:1.5, soundUnlock:'mo_caveboom'},
+
+  // Porcini sounds
+  {id:'snd_po_woodmid', icon:'🟤', name:'Wood Mid', desc:'A full-bodied mid-range wood hit. ×1.5 points.', cost:80, requires:['cont_porcini'], x:-900, y:-340, branch:'planets', mult:1.5, soundUnlock:'po_woodmid'},
+  {id:'snd_po_roundbonk', icon:'🟤', name:'Round Bonk', desc:'A round resonant bonk. ×1.5 points.', cost:80, requires:['cont_porcini'], x:-960, y:-360, branch:'planets', mult:1.5, soundUnlock:'po_roundbonk'},
+  {id:'snd_po_treeknock', icon:'🟤', name:'Tree Knock', desc:'A hollow tree knock with bark resonance. ×1.5 points.', cost:80, requires:['cont_porcini'], x:-1000, y:-310, branch:'planets', mult:1.5, soundUnlock:'po_treeknock'},
+  {id:'snd_po_stump', icon:'🟤', name:'Stump Hit', desc:'A heavy stump hit with warm thud. ×1.5 points.', cost:80, requires:['cont_porcini'], x:-940, y:-300, branch:'planets', mult:1.5, soundUnlock:'po_stump'},
+  {id:'snd_po_logdrum', icon:'🟤', name:'Log Drum', desc:'A slap on a hollow log drum. ×1.5 points.', cost:80, requires:['cont_porcini'], x:-1000, y:-380, branch:'planets', mult:1.5, soundUnlock:'po_logdrum'},
+
+  // Oyster sounds
+  {id:'snd_oy_breathslide', icon:'🦪', name:'Breath Slide', desc:'A breathy sliding exhale. ×1.5 points.', cost:80, requires:['cont_oyster'], x:-740, y:-600, branch:'planets', mult:1.5, soundUnlock:'oy_breathslide'},
+  {id:'snd_oy_airblow', icon:'🦪', name:'Air Blow', desc:'A soft air blow with wispy texture. ×1.5 points.', cost:80, requires:['cont_oyster'], x:-800, y:-620, branch:'planets', mult:1.5, soundUnlock:'oy_airblow'},
+  {id:'snd_oy_wetslap', icon:'🦪', name:'Wet Slap', desc:'A wet percussive slap. ×1.5 points.', cost:80, requires:['cont_oyster'], x:-860, y:-600, branch:'planets', mult:1.5, soundUnlock:'oy_wetslap'},
+  {id:'snd_oy_softbend', icon:'🦪', name:'Soft Bend', desc:'A gentle pitch bend with smooth decay. ×1.5 points.', cost:80, requires:['cont_oyster'], x:-680, y:-630, branch:'planets', mult:1.5, soundUnlock:'oy_softbend'},
+  {id:'snd_oy_shimmer', icon:'🦪', name:'Shimmer', desc:'A shimmering high texture. ×1.5 points.', cost:80, requires:['cont_oyster'], x:-920, y:-560, branch:'planets', mult:1.5, soundUnlock:'oy_shimmer'},
+
+  // Reishi sounds
+  {id:'snd_re_gong', icon:'🪬', name:'Gong', desc:'A ceremonial gong strike with long sustain. ×1.5 points.', cost:80, requires:['cont_reishi'], x:-860, y:-560, branch:'planets', mult:1.5, soundUnlock:'re_gong'},
+  {id:'snd_re_deepdrone', icon:'🪬', name:'Deep Drone', desc:'A low resonant drone from Reishi caves. ×1.5 points.', cost:80, requires:['cont_reishi'], x:-920, y:-540, branch:'planets', mult:1.5, soundUnlock:'re_deepdrone'},
+  {id:'snd_re_ceremony', icon:'🪬', name:'Ceremony', desc:'A ritualistic ceremonial strike. ×1.5 points.', cost:80, requires:['cont_reishi'], x:-960, y:-500, branch:'planets', mult:1.5, soundUnlock:'re_ceremony'},
+  {id:'snd_re_lowbowl', icon:'🪬', name:'Low Bowl', desc:'A deep singing bowl with slow decay. ×1.5 points.', cost:80, requires:['cont_reishi'], x:-820, y:-590, branch:'planets', mult:1.5, soundUnlock:'re_lowbowl'},
+  {id:'snd_re_resonance', icon:'🪬', name:'Resonance', desc:'A pure resonant tone from Reishi crystals. ×1.5 points.', cost:80, requires:['cont_reishi'], x:-960, y:-560, branch:'planets', mult:1.5, soundUnlock:'re_resonance'},
+
+  // Bella sounds
+  {id:'snd_be_snap', icon:'✨', name:'Snap', desc:'A bright finger snap. ×1.5 points.', cost:80, requires:['cont_bella'], x:-920, y:-480, branch:'planets', mult:1.5, soundUnlock:'be_snap'},
+  {id:'snd_be_woodsnap', icon:'✨', name:'Wood Snap', desc:'A crisp wood snap with quick attack. ×1.5 points.', cost:80, requires:['cont_bella'], x:-980, y:-460, branch:'planets', mult:1.5, soundUnlock:'be_woodsnap'},
+  {id:'snd_be_brightpop', icon:'✨', name:'Bright Pop', desc:'A bright poppy accent hit. ×1.5 points.', cost:80, requires:['cont_bella'], x:-1000, y:-430, branch:'planets', mult:1.5, soundUnlock:'be_brightpop'},
+  {id:'snd_be_crackle', icon:'✨', name:'Crackle', desc:'A snappy crackle with energy. ×1.5 points.', cost:80, requires:['cont_bella'], x:-960, y:-420, branch:'planets', mult:1.5, soundUnlock:'be_crackle'},
+  {id:'snd_be_accent', icon:'✨', name:'Accent', desc:'A punchy accent note from Bella peaks. ×1.5 points.', cost:80, requires:['cont_bella'], x:-1020, y:-490, branch:'planets', mult:1.5, soundUnlock:'be_accent'},
+
+  // Planet 3 — placeholder (branches from Hyphae)
+  {id:'planet_3', icon:'🌑', name:'???', desc:'An unknown world detected at the edge of the Tucana system. Coming in a future update.', cost:1000, requires:['planet_hyphae'], x:-900, y:-600, branch:'planets', mult:1.5, placeholder:true},
+
+  // ── QUAD SUN 2 — Point Optimization (↗) ──
+  {id:'sun_points', icon:'☀', name:'Quad Sun II', desc:'The second Quad Sun. Opens the Point Optimization path. Grants ×2 points.', cost:150, requires:['core'], x:200, y:-200, branch:'points', mult:2},
+  {id:'neural_tap_1', icon:'⚡', name:'Neural Tap I', desc:'Boosts base click value. Each tap is now worth 1.5× more points.', cost:200, requires:['sun_points'], x:340, y:-300, branch:'points', mult:1.5},
+  {id:'neural_tap_2', icon:'⚡', name:'Neural Tap II', desc:'Deeper neural calibration. Base click value ×2.', cost:400, requires:['neural_tap_1'], x:480, y:-360, branch:'points', mult:1.5},
+  {id:'synaptic_chain', icon:'🧠', name:'Synaptic Chain', desc:'Every 5th click fires a chain reaction worth 5× points.', cost:600, requires:['neural_tap_2'], x:580, y:-460, branch:'points', mult:1.5},
+  {id:'quantum_strike', icon:'💥', name:'Quantum Strike', desc:'Quantum-entangled auto-clicker. Auto-click speed +50%.', cost:800, requires:['synaptic_chain'], x:680, y:-540, branch:'points', mult:1.5},
+  {id:'singularity', icon:'🌟', name:'Singularity', desc:'The Tucana singularity opens. All point sources permanently ×2.', cost:1200, requires:['quantum_strike'], x:760, y:-620, branch:'points', mult:2},
+
+  // ── QUAD SUN 3 — Minigames (↙) ──
+  {id:'sun_minigames', icon:'☀', name:'Quad Sun III', desc:'The third Quad Sun. Opens the Minigame Nexus path. Grants ×2 points.', cost:150, requires:['core'], x:-200, y:200, branch:'minigames', mult:2},
+  {id:'memory_boost', icon:'🃏', name:'Memory Boost', desc:'Enhances cognitive resonance. Adds 2 extra levels to the Matching Game. ×1.5 points.', cost:250, requires:['sun_minigames'], x:-340, y:300, branch:'minigames', mult:1.5, placeholder:true},
+  {id:'alien_target', icon:'🎯', name:'Alien Target', desc:'Coming soon — a new tap-target minigame.', cost:500, requires:['memory_boost'], x:-480, y:360, branch:'minigames', mult:1.5, placeholder:true},
+  {id:'chaos_mode', icon:'🎲', name:'Chaos Mode', desc:'Coming soon — random bonus event minigame.', cost:750, requires:['alien_target'], x:-580, y:460, branch:'minigames', mult:1.5, placeholder:true},
+  {id:'grand_tournament', icon:'🏆', name:'Grand Tournament', desc:'Coming soon — weekly challenge mode.', cost:1000, requires:['chaos_mode'], x:-680, y:540, branch:'minigames', mult:1.5, placeholder:true},
+
+  // ── QUAD SUN 4 — Alien Evolution (↘) ──
+  {id:'sun_aliens', icon:'☀', name:'Quad Sun IV', desc:'The fourth Quad Sun. Opens the Alien Evolution path. Grants ×2 points.', cost:150, requires:['core'], x:200, y:200, branch:'aliens', mult:2},
+  {id:'gem_harvester_1', icon:'💎', name:'Gem Harvester I', desc:'Gem rate ×1.5 per alien per minute.', cost:200, requires:['sun_aliens'], x:340, y:300, branch:'aliens', mult:1.5},
+  {id:'gem_harvester_2', icon:'💎', name:'Gem Harvester II', desc:'Gem rate ×2 per alien per minute.', cost:400, requires:['gem_harvester_1'], x:480, y:360, branch:'aliens', mult:1.5},
+  {id:'alien_awakening', icon:'👽', name:'Alien Awakening', desc:'Bouncers glow and leave energy trails.', cost:350, requires:['gem_harvester_1'], x:560, y:280, branch:'aliens', mult:1.5},
+  {id:'dna_splice', icon:'🧬', name:'DNA Splice', desc:'Aliens occasionally double-tap automatically.', cost:600, requires:['alien_awakening'], x:680, y:380, branch:'aliens', mult:1.5},
+  {id:'ascension', icon:'🌠', name:'Ascension', desc:'All alien effects ×3 and your egg begins to incubate.', cost:900, requires:['dna_splice'], x:760, y:460, branch:'aliens', mult:1.5},
 ];
 const SKILL_MAP = {};
 SKILL_TREE_NODES.forEach(n => SKILL_MAP[n.id] = n);
@@ -5741,13 +6034,18 @@ function buySkill(id){
   if(!node || unlockedSkills[id]) return;
   if(!skillAvailable(id)) { showToast('Unlock the required skills first!'); return; }
   if(Math.floor(alienGems) < node.cost) { showToast('Not enough Alien Gems!'); return; }
-  if(node.placeholder && id !== 'memory_boost') { showToast('Coming in a future update!'); return; }
+  if(node.placeholder && id !== 'memory_boost') { showToast('🔒 Coming in a future update!'); return; }
   alienGems -= node.cost;
   unlockedSkills[id] = true;
+  // Unlock sound if this node grants one
+  if(node.soundUnlock) unlockPlanetSound(node.soundUnlock);
+  // Restart auto clicker to apply quantum_strike if just unlocked
+  if(id === 'quantum_strike' && autoInterval){ clearInterval(autoInterval); startAutoClicker(); }
   applySkillEffects();
   updateGemDisplays();
   renderSkillTree();
   updateSkillTreeBtn();
+  renderUI();
   autoSave();
   showToast(`✨ ${node.name} unlocked!`);
 }
